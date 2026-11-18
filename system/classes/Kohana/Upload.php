@@ -11,6 +11,7 @@
  *
  * - [Upload::$remove_spaces]
  * - [Upload::$default_directory]
+ * - [Upload::$blocked_extensions]
  *
  * @package    Kohana
  * @category   Helpers
@@ -31,8 +32,21 @@ class Kohana_Upload {
 	public static $default_directory = 'upload';
 
 	/**
+	 * @var  array  extensions that [Upload::save] drops from a generated file
+	 *              name, because a web server can run such files
+	 */
+	public static $blocked_extensions = array(
+		'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'pht', 'phps', 'phar', 'inc',
+		'cgi', 'pl', 'py', 'sh', 'asp', 'aspx', 'jsp', 'shtml', 'htaccess', 'htpasswd',
+	);
+
+	/**
 	 * Save an uploaded file to a new location. If no filename is provided,
-	 * the original filename will be used, with a unique prefix added.
+	 * a random name is used with the lower-case extension of the original
+	 * filename. An extension that is not 1 to 10 letters and digits, or that
+	 * is in [Upload::$blocked_extensions], is dropped.
+	 *
+	 * [!!] This does not validate the file type. Use [Upload::type] for that.
 	 *
 	 * This method should be used after validating the $_FILES array:
 	 *
@@ -48,10 +62,22 @@ class Kohana_Upload {
 	 * @param   integer $chmod      chmod mask
 	 * @return  string  on success, full path to new file
 	 * @return  FALSE   on failure
+	 * @throws  Kohana_Exception  if $filename contains a path
 	 */
 	public static function save(array $file, $filename = NULL, $directory = NULL, $chmod = 0644)
 	{
-		if ( ! isset($file['tmp_name']) OR ! is_uploaded_file($file['tmp_name']))
+		if ($filename !== NULL)
+		{
+			$filename = (string) $filename;
+
+			if ($filename === '' OR strpbrk($filename, "/\\\0") !== FALSE OR strpos($filename, '..') !== FALSE)
+			{
+				throw new Kohana_Exception('Upload file name must not contain a path: :file',
+					array(':file' => $filename));
+			}
+		}
+
+		if ( ! isset($file['tmp_name']) OR ! static::_is_uploaded_file($file['tmp_name']))
 		{
 			// Ignore corrupted uploads
 			return FALSE;
@@ -59,8 +85,7 @@ class Kohana_Upload {
 
 		if ($filename === NULL)
 		{
-			// Use the default filename, with a timestamp pre-pended
-			$filename = uniqid().$file['name'];
+			$filename = static::_random_filename(isset($file['name']) ? (string) $file['name'] : '');
 		}
 
 		if (Upload::$remove_spaces === TRUE)
@@ -84,7 +109,7 @@ class Kohana_Upload {
 		// Make the filename into a complete path
 		$filename = realpath($directory).DIRECTORY_SEPARATOR.$filename;
 
-		if (move_uploaded_file($file['tmp_name'], $filename))
+		if (static::_move_uploaded_file($file['tmp_name'], $filename))
 		{
 			if ($chmod !== FALSE)
 			{
@@ -97,6 +122,49 @@ class Kohana_Upload {
 		}
 
 		return FALSE;
+	}
+
+	/**
+	 * Random file name with the safe extension of the client file name.
+	 *
+	 * @param   string  $name  client file name
+	 * @return  string
+	 */
+	protected static function _random_filename($name)
+	{
+		$filename = bin2hex(random_bytes(16));
+
+		$ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+
+		if (preg_match('/^[a-z0-9]{1,10}$/D', $ext) AND ! in_array($ext, Upload::$blocked_extensions, TRUE))
+		{
+			$filename .= '.'.$ext;
+		}
+
+		return $filename;
+	}
+
+	/**
+	 * Proxy for is_uploaded_file(), so that tests can replace it.
+	 *
+	 * @param   string  $filename
+	 * @return  boolean
+	 */
+	protected static function _is_uploaded_file($filename)
+	{
+		return is_uploaded_file($filename);
+	}
+
+	/**
+	 * Proxy for move_uploaded_file(), so that tests can replace it.
+	 *
+	 * @param   string  $from
+	 * @param   string  $to
+	 * @return  boolean
+	 */
+	protected static function _move_uploaded_file($from, $to)
+	{
+		return move_uploaded_file($from, $to);
 	}
 
 	/**
