@@ -2,7 +2,7 @@
 /**
  * Database-based session class.
  *
- * Sample schema:
+ * Sample schema. Session ids are 24 hex characters:
  *
  *     CREATE TABLE  `sessions` (
  *         `session_id` VARCHAR( 24 ) NOT NULL,
@@ -124,8 +124,8 @@ class Kohana_Session_Database extends Session {
 
 		do
 		{
-			// Create a new session id
-			$id = str_replace('.', '-', uniqid(NULL, TRUE));
+			// 96 random bits; 24 hex characters fit the session_id column
+			$id = bin2hex(random_bytes(12));
 
 			// Get the the id from the database
 			$result = $query->execute($this->_db);
