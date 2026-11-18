@@ -48,7 +48,7 @@ class Kohana_Valid {
 	 */
 	public static function min_length($value, $length)
 	{
-		return UTF8::strlen($value) >= $length;
+		return UTF8::strlen((string) $value) >= $length;
 	}
 
 	/**
@@ -60,7 +60,7 @@ class Kohana_Valid {
 	 */
 	public static function max_length($value, $length)
 	{
-		return UTF8::strlen($value) <= $length;
+		return UTF8::strlen((string) $value) <= $length;
 	}
 
 	/**
@@ -76,13 +76,13 @@ class Kohana_Valid {
 		{
 			foreach ($length as $strlen)
 			{
-				if (UTF8::strlen($value) === $strlen)
+				if (UTF8::strlen((string) $value) === $strlen)
 					return TRUE;
 			}
 			return FALSE;
 		}
 
-		return UTF8::strlen($value) === $length;
+		return UTF8::strlen((string) $value) === $length;
 	}
 
 	/**
@@ -109,7 +109,7 @@ class Kohana_Valid {
 	 */
 	public static function email($email, $strict = FALSE)
 	{
-		if (UTF8::strlen($email) > 254)
+		if (UTF8::strlen((string) $email) > 254)
 		{
 			return FALSE;
 		}
@@ -153,7 +153,7 @@ class Kohana_Valid {
 			return FALSE; // Empty fields cause issues with checkdnsrr()
 
 		// Check if the email domain has a valid MX record
-		return (bool) checkdnsrr(preg_replace('/^[^@]++@/', '', $email), 'MX');
+		return (bool) checkdnsrr(preg_replace('/^[^@]++@/', '', (string) $email), 'MX');
 	}
 
 	/**
@@ -197,7 +197,7 @@ class Kohana_Valid {
 			# path (optional)
 			(?:/.*)?
 
-			$~iDx', $url, $matches))
+			$~iDx', (string) $url, $matches))
 			return FALSE;
 
 		// We matched an IP address
@@ -247,7 +247,7 @@ class Kohana_Valid {
 	public static function credit_card($number, $type = NULL)
 	{
 		// Remove all non-digit characters from the number
-		if (($number = preg_replace('/\D+/', '', $number)) === '')
+		if (($number = preg_replace('/\D+/', '', (string) $number)) === '')
 			return FALSE;
 
 		if ($type == NULL)
@@ -352,7 +352,7 @@ class Kohana_Valid {
 		}
 
 		// Remove all non-digit characters from the number
-		$number = preg_replace('/\D+/', '', $number);
+		$number = preg_replace('/\D+/', '', (string) $number);
 
 		// Check if the number is within range
 		return in_array(strlen($number), $lengths);
@@ -366,7 +366,7 @@ class Kohana_Valid {
 	 */
 	public static function date($str)
 	{
-		return (strtotime($str) !== FALSE);
+		return (strtotime((string) $str) !== FALSE);
 	}
 
 	/**
@@ -401,11 +401,12 @@ class Kohana_Valid {
 	{
 		if ($utf8 === TRUE)
 		{
-			return (bool) preg_match('/^[\pL\pN]++$/uD', $str);
+			return (bool) preg_match('/^[\pL\pN]++$/uD', (string) $str);
 		}
 		else
 		{
-			return ctype_alnum($str);
+			// ctype_*() read an int as a character code, so pass a string
+			return (is_string($str) OR is_int($str)) AND ctype_alnum((string) $str);
 		}
 	}
 
@@ -427,7 +428,7 @@ class Kohana_Valid {
 			$regex = '/^[-a-z0-9_]++$/iD';
 		}
 
-		return (bool) preg_match($regex, $str);
+		return (bool) preg_match($regex, (string) $str);
 	}
 
 	/**
@@ -441,11 +442,11 @@ class Kohana_Valid {
 	{
 		if ($utf8 === TRUE)
 		{
-			return (bool) preg_match('/^\pN++$/uD', $str);
+			return (bool) preg_match('/^\pN++$/uD', (string) $str);
 		}
 		else
 		{
-			return (is_int($str) AND $str >= 0) OR ctype_digit($str);
+			return (is_int($str) AND $str >= 0) OR (is_string($str) AND ctype_digit($str));
 		}
 	}
 
@@ -519,7 +520,7 @@ class Kohana_Valid {
 		// Get the decimal point for the current locale
 		list($decimal) = array_values(localeconv());
 
-		return (bool) preg_match('/^[+-]?[0-9]'.$digits.preg_quote($decimal).'[0-9]{'.( (int) $places).'}$/D', $str);
+		return (bool) preg_match('/^[+-]?[0-9]'.$digits.preg_quote($decimal).'[0-9]{'.( (int) $places).'}$/D', (string) $str);
 	}
 
 	/**
@@ -532,7 +533,7 @@ class Kohana_Valid {
 	 */
 	public static function color($str)
 	{
-		return (bool) preg_match('/^#?+[0-9a-f]{3}(?:[0-9a-f]{3})?$/iD', $str);
+		return (bool) preg_match('/^#?+[0-9a-f]{3}(?:[0-9a-f]{3})?$/iD', (string) $str);
 	}
 
 	/**

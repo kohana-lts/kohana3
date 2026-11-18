@@ -101,7 +101,7 @@ class Kohana_Arr {
 		}
 		else
 		{
-			if (array_key_exists($path, $array))
+			if ($array instanceof ArrayObject ? $array->offsetExists($path) : array_key_exists($path, $array))
 			{
 				// No need to do extra processing
 				return $array[$path];
@@ -127,7 +127,7 @@ class Kohana_Arr {
 		{
 			$key = array_shift($keys);
 
-			if (ctype_digit($key))
+			if (ctype_digit((string) $key))
 			{
 				// Make the key an integer
 				$key = (int) $key;
