@@ -81,7 +81,7 @@ class Kohana_Kohana_Exception extends Exception {
 	 * @param   Exception  $e
 	 * @return  void
 	 */
-	public static function handler(Exception $e)
+	public static function handler(Throwable $e)
 	{
 		$response = Kohana_Exception::_handler($e);
 
@@ -99,8 +99,10 @@ class Kohana_Kohana_Exception extends Exception {
 	 * @param   Exception  $e
 	 * @return  Response
 	 */
-	public static function _handler(Exception $e)
+	public static function _handler(Throwable $e)
 	{
+		$e = Kohana_Exception::exception($e);
+
 		try
 		{
 			// Log the exception
@@ -127,6 +129,21 @@ class Kohana_Kohana_Exception extends Exception {
 
 			exit(1);
 		}
+	}
+
+	/**
+	 * Wraps a PHP 7+ Error (TypeError, ...) in an ErrorException, because the
+	 * other methods of this class accept only Exception.
+	 *
+	 * @param   Throwable  $e
+	 * @return  Exception
+	 */
+	public static function exception(Throwable $e)
+	{
+		if ($e instanceof Exception)
+			return $e;
+
+		return new ErrorException(get_class($e).': '.$e->getMessage(), E_ERROR, E_ERROR, $e->getFile(), $e->getLine(), $e);
 	}
 
 	/**

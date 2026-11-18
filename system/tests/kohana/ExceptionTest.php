@@ -96,4 +96,45 @@ class Kohana_ExceptionTest extends Unittest_TestCase
 	{
 		$this->assertEquals($expected, Kohana_Exception::text($exception));
 	}
+
+	/**
+	 * PHP 7+ throws Error objects, which are not Exception objects.
+	 *
+	 * @test
+	 * @covers Kohana_Exception::_handler
+	 * @covers Kohana_Exception::exception
+	 */
+	public function test_handler_accepts_errors()
+	{
+		$log = Kohana::$log;
+		Kohana::$log = new Log;
+
+		// The error page dumps trace arguments, and PHPUnit objects are huge
+		$ignore_args = ini_set('zend.exception_ignore_args', '1');
+
+		$response = Kohana_Exception::_handler(new TypeError('type error message'));
+
+		ini_set('zend.exception_ignore_args', $ignore_args);
+		Kohana::$log = $log;
+
+		$this->assertInstanceOf('Response', $response);
+		$this->assertSame(500, $response->status());
+	}
+
+	/**
+	 * @test
+	 * @covers Kohana_Exception::exception
+	 */
+	public function test_exception_wraps_errors()
+	{
+		$error = new Error('message');
+		$wrapped = Kohana_Exception::exception($error);
+
+		$this->assertInstanceOf('ErrorException', $wrapped);
+		$this->assertSame($error, $wrapped->getPrevious());
+		$this->assertSame('Error: message', $wrapped->getMessage());
+
+		$exception = new Exception('x');
+		$this->assertSame($exception, Kohana_Exception::exception($exception));
+	}
 }
