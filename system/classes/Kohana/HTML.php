@@ -169,19 +169,21 @@ class Kohana_HTML {
 	}
 
 	/**
-	 * Creates an email (mailto:) anchor. Note that the title is not escaped,
-	 * to allow HTML elements within links (images, etc).
+	 * Creates an email (mailto:) anchor. The address is escaped. A given
+	 * title is not escaped, to allow HTML elements within links (images, etc).
 	 *
 	 *     echo HTML::mailto($address);
 	 *
 	 * @param   string  $email      email address to send to
-	 * @param   string  $title      link text
+	 * @param   string  $title      link text, the escaped address when NULL
 	 * @param   array   $attributes HTML anchor attributes
 	 * @return  string
 	 * @uses    HTML::attributes
 	 */
 	public static function mailto($email, $title = NULL, ?array $attributes = NULL)
 	{
+		$email = HTML::chars($email);
+
 		if ($title === NULL)
 		{
 			// Use the email address as the title

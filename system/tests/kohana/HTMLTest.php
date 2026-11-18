@@ -401,4 +401,46 @@ class Kohana_HTMLTest extends Unittest_TestCase
 			HTML::file_anchor($file, $title, $attributes, $protocol, $index)
 		);
 	}
+
+	/**
+	 * Provides test data for test_mailto()
+	 *
+	 * @return array
+	 */
+	public function provider_mailto()
+	{
+		$mailto = '&#109;&#097;&#105;&#108;&#116;&#111;&#058;';
+
+		return array(
+			array(
+				'<a href="'.$mailto.'info@example.com">info@example.com</a>',
+				'info@example.com', NULL, NULL,
+			),
+			array(
+				'<a href="'.$mailto.'info@example.com" class="mail"><b>Mail</b></a>',
+				'info@example.com', '<b>Mail</b>', array('class' => 'mail'),
+			),
+			// The address is escaped in the attribute and in the default title
+			array(
+				'<a href="'.$mailto.'a&quot;onmouseover=alert(1)@b.c">a&quot;onmouseover=alert(1)@b.c</a>',
+				'a"onmouseover=alert(1)@b.c', NULL, NULL,
+			),
+			array(
+				'<a href="'.$mailto.'&lt;script&gt;@b.c">&lt;script&gt;@b.c</a>',
+				'<script>@b.c', NULL, NULL,
+			),
+		);
+	}
+
+	/**
+	 * Tests HTML::mailto()
+	 *
+	 * @test
+	 * @dataProvider provider_mailto
+	 * @covers HTML::mailto
+	 */
+	public function test_mailto($expected, $email, $title, $attributes)
+	{
+		$this->assertSame($expected, HTML::mailto($email, $title, $attributes));
+	}
 }
