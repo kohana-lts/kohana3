@@ -479,7 +479,7 @@ class Kohana_Response implements HTTP_Response {
 		}
 
 		// Set the headers for a download
-		$this->_header['content-disposition'] = $disposition.'; filename="'.$download.'"';
+		$this->_header['content-disposition'] = $this->_content_disposition($disposition, $download);
 		$this->_header['content-type']        = $mime;
 		$this->_header['content-length']      = (string) (($end - $start) + 1);
 
@@ -570,6 +570,27 @@ class Kohana_Response implements HTTP_Response {
 
 		// Stop execution
 		exit;
+	}
+
+	/**
+	 * Builds a Content-Disposition value with a safe ASCII `filename` and an
+	 * RFC 6266 `filename*` for the UTF-8 name. Quotes, backslashes and
+	 * control characters are removed, so the name cannot add parameters.
+	 *
+	 * @param   string  $disposition  "attachment" or "inline"
+	 * @param   string  $filename     download file name
+	 * @return  string
+	 */
+	protected function _content_disposition($disposition, $filename)
+	{
+		$filename = preg_replace('/[\x00-\x1F\x7F"\\\\]/', '', (string) $filename);
+
+		$ascii = preg_replace('/[^\x20-\x7E]/', '_', UTF8::transliterate_to_ascii($filename));
+
+		if ($ascii === '')
+			return $disposition.'; filename="download"';
+
+		return $disposition.'; filename="'.$ascii.'"; filename*=UTF-8\'\''.rawurlencode($filename);
 	}
 
 	/**

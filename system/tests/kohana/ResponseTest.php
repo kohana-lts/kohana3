@@ -184,4 +184,49 @@ class Kohana_ResponseTest extends Unittest_TestCase
 		$headers  = $response->send_headers()->headers();
 		$this->assertSame($content_type, (string) $headers['content-type']);
 	}
+
+	/**
+	 * Provides test data for test_content_disposition()
+	 *
+	 * @return array
+	 */
+	public function provider_content_disposition()
+	{
+		return array(
+			array('attachment', 'report.pdf', 'attachment; filename="report.pdf"; filename*=UTF-8\'\'report.pdf'),
+			array('inline', 'my file.txt', 'inline; filename="my file.txt"; filename*=UTF-8\'\'my%20file.txt'),
+			// A quote or a backslash must not end the quoted value
+			array('attachment', 'a".html', 'attachment; filename="a.html"; filename*=UTF-8\'\'a.html'),
+			array('attachment', 'a\\"; filename=x.html', 'attachment; filename="a; filename=x.html"; filename*=UTF-8\'\'a%3B%20filename%3Dx.html'),
+			array('attachment', "a\r\nb\tc.txt", 'attachment; filename="abc.txt"; filename*=UTF-8\'\'abc.txt'),
+			// Non-ASCII names get an ASCII fallback
+			array('attachment', 'naïve žena.txt', 'attachment; filename="naive zena.txt"; filename*=UTF-8\'\'na%C3%AFve%20%C5%BEena.txt'),
+			array('attachment', '""', 'attachment; filename="download"'),
+		);
+	}
+
+	/**
+	 * Tests the Content-Disposition value of Response::send_file()
+	 *
+	 * @dataProvider provider_content_disposition
+	 * @covers Response::_content_disposition
+	 */
+	public function test_content_disposition($disposition, $filename, $expected)
+	{
+		$response = new Kohana_ResponseTest_TestableResponse;
+
+		$this->assertSame($expected, $response->content_disposition($disposition, $filename));
+	}
+}
+
+/**
+ * Exposes the Content-Disposition helper, because send_file() exits.
+ */
+class Kohana_ResponseTest_TestableResponse extends Response {
+
+	public function content_disposition($disposition, $filename)
+	{
+		return $this->_content_disposition($disposition, $filename);
+	}
+
 }
