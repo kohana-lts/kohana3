@@ -18,6 +18,16 @@
  */
 class Kohana_CoreTest extends Unittest_TestCase
 {
+
+	/**
+	 * @var  array  temporary directories to remove
+	 */
+	protected $temp_dirs = array();
+
+	/**
+	 * @var  integer  umask to restore
+	 */
+	protected $old_umask = NULL;
 	protected $old_modules = array();
 
 	/**
@@ -43,6 +53,8 @@ class Kohana_CoreTest extends Unittest_TestCase
 	// @codingStandardsIgnoreEnd
 	{
 		Kohana::modules($this->old_modules);
+		$this->remove_temp_dirs();
+		parent::tearDown();
 	}
 
 	/**
@@ -173,6 +185,67 @@ class Kohana_CoreTest extends Unittest_TestCase
 	{
 		Kohana::cache($key, $value, $lifetime);
 		$this->assertEquals($value, Kohana::cache($key));
+	}
+
+	/**
+	 * Kohana::cache() must not create world-writable directories or files,
+	 * also with umask 0.
+	 *
+	 * @test
+	 * @covers Kohana::cache
+	 */
+	public function test_cache_does_not_create_world_writable_files()
+	{
+		$dir = $this->make_temp_dir();
+		$this->setEnvironment(array('Kohana::$cache_dir' => $dir));
+		$this->old_umask = umask(0);
+
+		$this->assertTrue(Kohana::cache('modes', 'value'));
+
+		$file = sha1('modes').'.txt';
+		$this->assertSame(0755, $this->mode($dir.DIRECTORY_SEPARATOR.$file[0].$file[1]));
+		$this->assertSame(0644, $this->mode($dir.DIRECTORY_SEPARATOR.$file[0].$file[1].DIRECTORY_SEPARATOR.$file));
+	}
+
+	/**
+	 * @test
+	 * @covers Kohana::cache
+	 */
+	public function test_cache_modes_are_configurable()
+	{
+		$dir = $this->make_temp_dir();
+		$this->setEnvironment(array(
+			'Kohana::$cache_dir'       => $dir,
+			'Kohana::$cache_dir_mode'  => 0750,
+			'Kohana::$cache_file_mode' => 0640,
+		));
+
+		Kohana::cache('modes', 'value');
+
+		$file = sha1('modes').'.txt';
+		$this->assertSame(0750, $this->mode($dir.DIRECTORY_SEPARATOR.$file[0].$file[1]));
+		$this->assertSame(0640, $this->mode($dir.DIRECTORY_SEPARATOR.$file[0].$file[1].DIRECTORY_SEPARATOR.$file));
+	}
+
+	/**
+	 * With $allowed_classes FALSE, cached objects do not come back as objects
+	 * of their class, so a changed cache file cannot inject an object.
+	 *
+	 * @test
+	 * @covers Kohana::cache
+	 */
+	public function test_cache_can_load_without_objects()
+	{
+		$dir = $this->make_temp_dir();
+		$this->setEnvironment(array('Kohana::$cache_dir' => $dir));
+
+		Kohana::cache('object', array('a' => new ArrayObject(array(1))));
+
+		$this->assertInstanceOf('ArrayObject', Kohana::cache('object')['a']);
+		$this->assertInstanceOf('__PHP_Incomplete_Class', Kohana::cache('object', NULL, NULL, FALSE)['a']);
+
+		Kohana::cache('array', array('views/a' => '/path/a.php'));
+		$this->assertSame(array('views/a' => '/path/a.php'), Kohana::cache('array', NULL, NULL, FALSE));
 	}
 
 	/**
@@ -382,5 +455,58 @@ class Kohana_CoreTest extends Unittest_TestCase
 			$this->assertContains($module, $include_paths);
 		}
 	}
-}
 
+	/**
+	 * Creates an empty temporary directory
+	 *
+	 * @return  string
+	 */
+	protected function make_temp_dir()
+	{
+		$dir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'kohana_modes_'.bin2hex(random_bytes(4));
+		mkdir($dir);
+		$this->temp_dirs[] = $dir;
+
+		return realpath($dir);
+	}
+
+	/**
+	 * Removes the temporary directories and restores the umask
+	 */
+	protected function remove_temp_dirs()
+	{
+		if ($this->old_umask !== NULL)
+		{
+			umask($this->old_umask);
+			$this->old_umask = NULL;
+		}
+
+		foreach ($this->temp_dirs as $dir)
+		{
+			$files = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+				RecursiveIteratorIterator::CHILD_FIRST
+			);
+
+			foreach ($files as $file)
+			{
+				$file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
+			}
+
+			rmdir($dir);
+		}
+
+		$this->temp_dirs = array();
+	}
+
+	/**
+	 * @param   string  $path
+	 * @return  integer permission bits of the path
+	 */
+	protected function mode($path)
+	{
+		clearstatcache();
+
+		return fileperms($path) & 07777;
+	}
+}

@@ -26,6 +26,7 @@
  * -------------- | -------- | ---------------------------------------------------------------
  * driver         | __YES__  | (_string_) The driver type to use
  * cache_dir      | __NO__   | (_string_) The cache directory to use for this cache instance
+ * dir_mode       | __NO__   | (_integer_) Mode of new cache directories, default 0755
  *
  * ### System requirements
  *
@@ -80,12 +81,12 @@ class Kohana_Cache_File extends Cache implements Cache_GarbageCollect {
 		// PHP < 5.3 exception handle
 		catch (ErrorException $e)
 		{
-			$this->_cache_dir = $this->_make_directory($directory, 0777, TRUE);
+			$this->_cache_dir = $this->_make_directory($directory, Arr::get($this->_config, 'dir_mode', 0755), TRUE);
 		}
 		// PHP >= 5.3 exception handle
 		catch (UnexpectedValueException $e)
 		{
-			$this->_cache_dir = $this->_make_directory($directory, 0777, TRUE);
+			$this->_cache_dir = $this->_make_directory($directory, Arr::get($this->_config, 'dir_mode', 0755), TRUE);
 		}
 
 		// If the defined directory is a file, get outta here
@@ -218,7 +219,7 @@ class Kohana_Cache_File extends Cache implements Cache_GarbageCollect {
 		// If the directory path is not a directory
 		if ( ! $dir->isDir())
 		{
-			$this->_make_directory($directory, 0777, TRUE);
+			$this->_make_directory($directory, Arr::get($this->_config, 'dir_mode', 0755), TRUE);
 		}
 
 		// Open file to inspect
@@ -443,7 +444,7 @@ class Kohana_Cache_File extends Cache implements Cache_GarbageCollect {
 	 * @return  SplFileInfo
 	 * @throws  Cache_Exception
 	 */
-	protected function _make_directory($directory, $mode = 0777, $recursive = FALSE, $context = NULL)
+	protected function _make_directory($directory, $mode = 0755, $recursive = FALSE, $context = NULL)
 	{
 		// call mkdir according to the availability of a passed $context param
 		$mkdir_result = $context ?

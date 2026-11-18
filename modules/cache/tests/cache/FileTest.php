@@ -157,4 +157,61 @@ class Kohana_Cache_FileTest extends Kohana_CacheBasicMethodsTest {
 		//var_dump($cache->_is_expired($file));
 		return $file->isFile();
 	}
+	/**
+	 * Cache_File must not create world-writable directories.
+	 *
+	 * @return  void
+	 */
+	public function test_set_does_not_create_world_writable_directories()
+	{
+		$dir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'kohana_cache_modes_'.bin2hex(random_bytes(4));
+		mkdir($dir);
+
+		Kohana::$config->load('cache')->set('file_modes', array(
+			'driver'           => 'file',
+			'cache_dir'        => $dir,
+			'ignore_on_delete' => array(),
+		));
+		Kohana::$config->load('cache')->set('file_modes_custom', array(
+			'driver'           => 'file',
+			'cache_dir'        => $dir,
+			'dir_mode'         => 0750,
+			'ignore_on_delete' => array(),
+		));
+
+		$old_umask = umask(0);
+
+		try
+		{
+			$filename = sha1('modes').'.cache';
+
+			Cache::instance('file_modes')->set('modes', 'value');
+			clearstatcache();
+			$this->assertSame(0755, fileperms($dir.DIRECTORY_SEPARATOR.$filename[0].$filename[1]) & 07777);
+
+			$filename = sha1('modes_custom').'.cache';
+
+			Cache::instance('file_modes_custom')->set('modes_custom', 'value');
+			clearstatcache();
+			$this->assertSame(0750, fileperms($dir.DIRECTORY_SEPARATOR.$filename[0].$filename[1]) & 07777);
+		}
+		finally
+		{
+			umask($old_umask);
+			unset(Cache::$instances['file_modes'], Cache::$instances['file_modes_custom']);
+
+			$files = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+				RecursiveIteratorIterator::CHILD_FIRST
+			);
+
+			foreach ($files as $file)
+			{
+				$file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
+			}
+
+			rmdir($dir);
+		}
+	}
+
 } // End Kohana_SqliteTest

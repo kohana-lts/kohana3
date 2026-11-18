@@ -18,6 +18,24 @@ class Kohana_LogTest extends Unittest_TestCase
 {
 
 	/**
+	 * @var  array  temporary directories to remove
+	 */
+	protected $temp_dirs = array();
+
+	/**
+	 * @var  integer  umask to restore
+	 */
+	protected $old_umask = NULL;
+
+	// @codingStandardsIgnoreStart
+	public function tearDown(): void
+	// @codingStandardsIgnoreEnd
+	{
+		$this->remove_temp_dirs();
+		parent::tearDown();
+	}
+
+	/**
 	 * Tests that when a new logger is created the list of messages is initially
 	 * empty
 	 *
@@ -108,4 +126,101 @@ class Kohana_LogTest extends Unittest_TestCase
 	}
 
 
+
+	/**
+	 * Provides test data for test_log_file_modes()
+	 *
+	 * @return array
+	 */
+	public function provider_log_file_modes()
+	{
+		return array(
+			array(array(), 02755, 0644),
+			array(array('Log_File::$dir_mode' => 0750, 'Log_File::$file_mode' => 0640), 0750, 0640),
+		);
+	}
+
+	/**
+	 * Log_File must not create world-writable directories or files.
+	 *
+	 * @test
+	 * @dataProvider provider_log_file_modes
+	 * @covers Log_File::write
+	 */
+	public function test_log_file_modes($environment, $dir_mode, $file_mode)
+	{
+		$dir = $this->make_temp_dir();
+		$this->setEnvironment($environment);
+		$this->old_umask = umask(0);
+
+		$writer = new Log_File($dir);
+		$writer->write(array(array(
+			'time'  => time(),
+			'level' => Log::INFO,
+			'body'  => 'message',
+			'file'  => __FILE__,
+			'line'  => __LINE__,
+		)));
+
+		$year  = $dir.DIRECTORY_SEPARATOR.date('Y');
+		$month = $year.DIRECTORY_SEPARATOR.date('m');
+
+		$this->assertSame($dir_mode, $this->mode($year));
+		$this->assertSame($dir_mode, $this->mode($month));
+		$this->assertSame($file_mode, $this->mode($month.DIRECTORY_SEPARATOR.date('d').EXT));
+	}
+
+	/**
+	 * Creates an empty temporary directory
+	 *
+	 * @return  string
+	 */
+	protected function make_temp_dir()
+	{
+		$dir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'kohana_modes_'.bin2hex(random_bytes(4));
+		mkdir($dir);
+		$this->temp_dirs[] = $dir;
+
+		return realpath($dir);
+	}
+
+	/**
+	 * Removes the temporary directories and restores the umask
+	 */
+	protected function remove_temp_dirs()
+	{
+		if ($this->old_umask !== NULL)
+		{
+			umask($this->old_umask);
+			$this->old_umask = NULL;
+		}
+
+		foreach ($this->temp_dirs as $dir)
+		{
+			$files = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+				RecursiveIteratorIterator::CHILD_FIRST
+			);
+
+			foreach ($files as $file)
+			{
+				$file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
+			}
+
+			rmdir($dir);
+		}
+
+		$this->temp_dirs = array();
+	}
+
+	/**
+	 * @param   string  $path
+	 * @return  integer permission bits of the path
+	 */
+	protected function mode($path)
+	{
+		clearstatcache();
+
+		return fileperms($path) & 07777;
+	}
 }

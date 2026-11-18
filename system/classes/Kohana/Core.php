@@ -82,6 +82,16 @@ class Kohana_Core {
 	public static $index_file = 'index.php';
 
 	/**
+	 * @var  integer  mode of the directories that [Kohana::cache] and [Kohana::init] create
+	 */
+	public static $cache_dir_mode = 0755;
+
+	/**
+	 * @var  integer  mode of the files that [Kohana::cache] writes
+	 */
+	public static $cache_file_mode = 0644;
+
+	/**
 	 * @var  string  Cache directory, used by [Kohana::cache]. Set by [Kohana::init]
 	 */
 	public static $cache_dir;
@@ -252,10 +262,10 @@ class Kohana_Core {
 				try
 				{
 					// Create the cache directory
-					mkdir($settings['cache_dir'], 0755, TRUE);
+					mkdir($settings['cache_dir'], Kohana::$cache_dir_mode, TRUE);
 
 					// Set permissions (must be manually set to fix umask issues)
-					chmod($settings['cache_dir'], 0755);
+					chmod($settings['cache_dir'], Kohana::$cache_dir_mode);
 				}
 				catch (Exception $e)
 				{
@@ -293,8 +303,9 @@ class Kohana_Core {
 
 		if (Kohana::$caching === TRUE)
 		{
-			// Load the file path cache
-			Kohana::$_files = Kohana::cache('Kohana::find_file()');
+			// Load the file path cache: an array of path strings, so no objects
+			$files = Kohana::cache('Kohana::find_file()', NULL, NULL, FALSE);
+			Kohana::$_files = is_array($files) ? $files : array();
 		}
 
 		if (isset($settings['charset']))
@@ -846,14 +857,18 @@ class Kohana_Core {
 	 *
 	 * [ref-var]: http://php.net/var_export
 	 *
+	 * Directories and files get [Kohana::$cache_dir_mode] and
+	 * [Kohana::$cache_file_mode].
+	 *
 	 * @throws  Kohana_Exception
 	 * @param   string  $name       name of the cache
 	 * @param   mixed   $data       data to cache
 	 * @param   integer $lifetime   number of seconds the cache is valid for
+	 * @param   mixed   $allowed_classes  unserialize() option for getting: FALSE for data without objects
 	 * @return  mixed    for getting
 	 * @return  boolean  for setting
 	 */
-	public static function cache($name, $data = NULL, $lifetime = NULL)
+	public static function cache($name, $data = NULL, $lifetime = NULL, $allowed_classes = TRUE)
 	{
 		// Cache file is a hash of the name
 		$file = sha1($name).'.txt';
@@ -876,7 +891,7 @@ class Kohana_Core {
 					// Return the cache
 					try
 					{
-						return unserialize(file_get_contents($dir.$file));
+						return unserialize(file_get_contents($dir.$file), array('allowed_classes' => $allowed_classes));
 					}
 					catch (Exception $e)
 					{
@@ -905,10 +920,10 @@ class Kohana_Core {
 		if ( ! is_dir($dir))
 		{
 			// Create the cache directory
-			mkdir($dir, 0777, TRUE);
+			mkdir($dir, Kohana::$cache_dir_mode, TRUE);
 
 			// Set permissions (must be manually set to fix umask issues)
-			chmod($dir, 0777);
+			chmod($dir, Kohana::$cache_dir_mode);
 		}
 
 		// Force the data to be a string
@@ -916,8 +931,18 @@ class Kohana_Core {
 
 		try
 		{
+			$new = ! is_file($dir.$file);
+
 			// Write the cache
-			return (bool) file_put_contents($dir.$file, $data, LOCK_EX);
+			$written = (bool) file_put_contents($dir.$file, $data, LOCK_EX);
+
+			if ($written AND $new)
+			{
+				// Only a new file: chmod() fails on a file of another user
+				chmod($dir.$file, Kohana::$cache_file_mode);
+			}
+
+			return $written;
 		}
 		catch (Exception $e)
 		{

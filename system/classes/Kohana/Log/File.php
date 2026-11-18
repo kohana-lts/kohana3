@@ -11,6 +11,17 @@
 class Kohana_Log_File extends Log_Writer {
 
 	/**
+	 * @var  integer  mode of the year and month directories
+	 */
+	public static $dir_mode = 02755;
+
+	/**
+	 * @var  integer  mode of new log files. Use 0664 or 0666 when the web
+	 *                server and the CLI write logs as different users.
+	 */
+	public static $file_mode = 0644;
+
+	/**
 	 * @var  string  Directory to place log files in
 	 */
 	protected $_directory;
@@ -54,10 +65,10 @@ class Kohana_Log_File extends Log_Writer {
 		if ( ! is_dir($directory))
 		{
 			// Create the yearly directory
-			mkdir($directory, 02777);
+			mkdir($directory, Log_File::$dir_mode);
 
 			// Set permissions (must be manually set to fix umask issues)
-			chmod($directory, 02777);
+			chmod($directory, Log_File::$dir_mode);
 		}
 
 		// Add the month to the directory
@@ -66,10 +77,10 @@ class Kohana_Log_File extends Log_Writer {
 		if ( ! is_dir($directory))
 		{
 			// Create the monthly directory
-			mkdir($directory, 02777);
+			mkdir($directory, Log_File::$dir_mode);
 
 			// Set permissions (must be manually set to fix umask issues)
-			chmod($directory, 02777);
+			chmod($directory, Log_File::$dir_mode);
 		}
 
 		// Set the name of the log file
@@ -80,8 +91,8 @@ class Kohana_Log_File extends Log_Writer {
 			// Create the log file
 			file_put_contents($filename, Kohana::FILE_SECURITY.' ?>'.PHP_EOL);
 
-			// Allow anyone to write to log files
-			chmod($filename, 0666);
+			// Set permissions (must be manually set to fix umask issues)
+			chmod($filename, Log_File::$file_mode);
 		}
 
 		foreach ($messages as $message)

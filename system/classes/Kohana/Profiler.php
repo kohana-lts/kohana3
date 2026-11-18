@@ -308,7 +308,7 @@ class Kohana_Profiler {
 	public static function application()
 	{
 		// Load the stats from cache, which is valid for 1 day
-		$stats = Kohana::cache('profiler_application_stats', NULL, 3600 * 24);
+		$stats = Kohana::cache('profiler_application_stats', NULL, 3600 * 24, FALSE);
 
 		if ( ! is_array($stats) OR $stats['count'] > Profiler::$rollover)
 		{
