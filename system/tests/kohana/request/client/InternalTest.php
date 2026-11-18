@@ -94,4 +94,33 @@ class Kohana_Request_Client_InternalTest extends Unittest_TestCase
 
 		$this->assertSame($expected, $response->status());
 	}
+
+	/**
+	 * A PHP 7+ Error in a controller must give a 500 response, as an
+	 * Exception does.
+	 *
+	 * @test
+	 */
+	public function test_error_in_controller_gives_500_response()
+	{
+		$this->setEnvironment(array('Kohana::$log' => new Log));
+
+		// The error page dumps trace arguments, and PHPUnit objects are huge
+		$ignore_args = ini_set('zend.exception_ignore_args', '1');
+
+		$route = new Route('<controller>');
+		$response = Request::factory('Kohana_InternalTest_Error', array(), FALSE, array($route))->execute();
+
+		ini_set('zend.exception_ignore_args', $ignore_args);
+
+		$this->assertSame(500, $response->status());
+	}
+}
+
+class Controller_Kohana_InternalTest_Error extends Controller {
+
+	public function action_index()
+	{
+		throw new TypeError('type error in a controller');
+	}
 }

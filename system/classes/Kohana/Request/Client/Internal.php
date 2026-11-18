@@ -113,9 +113,9 @@ class Kohana_Request_Client_Internal extends Request_Client {
 			// Get the response via the Exception
 			$response = $e->get_response();
 		}
-		catch (Exception $e)
+		catch (Throwable $e)
 		{
-			// Generate an appropriate Response object
+			// Generate an appropriate Response object, also for PHP 7+ Error objects
 			$response = Kohana_Exception::_handler($e);
 		}
 

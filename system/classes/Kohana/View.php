@@ -235,7 +235,7 @@ class Kohana_View {
 		{
 			return $this->render();
 		}
-		catch (Exception $e)
+		catch (Throwable $e)
 		{
 			/**
 			 * Display the exception message.
