@@ -185,6 +185,19 @@ abstract class Kohana_Database_DriverTestCase extends Unittest_TestCase {
 		$this->assertCount(1, DB::select()->from('kt_items')->execute($this->db));
 	}
 
+	public function test_order_by_direction()
+	{
+		$this->insert_items(array('a', 'b', 'c'));
+
+		$names = DB::select('name')->from('kt_items')->order_by('id', 'desc')->execute($this->db)->as_array(NULL, 'name');
+
+		$this->assertSame(array('c', 'b', 'a'), $names);
+
+		$this->expectException(Database_Exception::class);
+
+		DB::select('name')->from('kt_items')->order_by('id', 'desc,(SELECT 1)')->execute($this->db);
+	}
+
 	public function test_query_error_throws_database_exception()
 	{
 		$this->expectException(Database_Exception::class);

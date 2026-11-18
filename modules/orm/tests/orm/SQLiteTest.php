@@ -87,6 +87,13 @@ class Kohana_ORM_SQLiteTest extends Unittest_TestCase {
 		$this->assertSame(array('a', 'b', 'c'), array_values(ORM::factory('Kt_Item')->find_all()->as_array('id', 'name')));
 	}
 
+	public function test_order_by_rejects_invalid_direction()
+	{
+		$this->expectException(Database_Exception::class);
+
+		ORM::factory('Kt_Item')->order_by('name', 'desc,(SELECT 1)')->find_all();
+	}
+
 	public function test_values_only_sets_expected_columns()
 	{
 		$item = ORM::factory('Kt_Item')->values(array('name' => 'x', 'score' => 5, 'id' => 99), array('name'));

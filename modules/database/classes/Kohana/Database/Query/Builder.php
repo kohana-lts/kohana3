@@ -226,16 +226,39 @@ abstract class Kohana_Database_Query_Builder extends Database_Query {
 				$column = $db->quote_column($column);
 			}
 
-			if ($direction)
-			{
-				// Make the direction uppercase
-				$direction = ' '.strtoupper($direction);
-			}
-
-			$sort[] = $column.$direction;
+			$sort[] = $column.$this->_compile_direction($db, $direction);
 		}
 
 		return 'ORDER BY '.implode(', ', $sort);
+	}
+
+	/**
+	 * Compiles an ORDER BY direction. Only ASC and DESC are valid, because
+	 * the direction goes into the SQL unquoted (CVE-2019-8979). Use a
+	 * [Database_Expression] for other raw SQL, for example "DESC NULLS LAST".
+	 *
+	 * @param   object  $db         Database instance
+	 * @param   mixed   $direction  NULL, "ASC", "DESC" or Database_Expression
+	 * @return  string  the direction with a leading space, or ""
+	 * @throws  Database_Exception
+	 */
+	protected function _compile_direction(Database $db, $direction)
+	{
+		if ($direction instanceof Database_Expression)
+			return ' '.$direction->compile($db);
+
+		if ($direction === NULL OR $direction === '')
+			return '';
+
+		if (is_string($direction))
+		{
+			$direction = strtoupper(trim($direction));
+
+			if ($direction === 'ASC' OR $direction === 'DESC')
+				return ' '.$direction;
+		}
+
+		throw new Database_Exception('Invalid ORDER BY direction, use ASC or DESC');
 	}
 
 	/**
