@@ -23,9 +23,17 @@ abstract class Kohana_Database_DriverTestCase extends Unittest_TestCase {
 	abstract protected function config();
 
 	/**
-	 * @return string CREATE TABLE statement for the kt_items table
+	 * @return string CREATE TABLE IF NOT EXISTS statement for the kt_items table
 	 */
 	abstract protected function create_table_sql();
+
+	/**
+	 * @return array statements that empty kt_items and reset its id counter
+	 */
+	protected function reset_sql()
+	{
+		return array('DELETE FROM kt_items');
+	}
 
 	protected function setUp(): void
 	{
@@ -40,15 +48,20 @@ abstract class Kohana_Database_DriverTestCase extends Unittest_TestCase {
 		unset(Database::$instances[$name]);
 
 		$this->db = Database::instance($name, $config);
-		$this->db->query(NULL, 'DROP TABLE IF EXISTS kt_items');
+		// Never drop tables: create the table once and empty it for each test
 		$this->db->query(NULL, $this->create_table_sql());
+
+		foreach ($this->reset_sql() as $sql)
+		{
+			$this->db->query(NULL, $sql);
+		}
 	}
 
 	protected function tearDown(): void
 	{
 		if ($this->db)
 		{
-			$this->db->query(NULL, 'DROP TABLE IF EXISTS kt_items');
+			$this->db->query(NULL, 'DELETE FROM kt_items');
 			$this->db->disconnect();
 			unset(Database::$instances[(string) $this->db]);
 		}

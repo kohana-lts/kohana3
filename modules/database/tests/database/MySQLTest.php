@@ -48,6 +48,11 @@ class Kohana_Database_MySQLTest extends Kohana_Database_DriverTestCase {
 
 	protected function create_table_sql()
 	{
-		return 'CREATE TABLE kt_items (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, score INT NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
+		return 'CREATE TABLE IF NOT EXISTS kt_items (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, score INT NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
+	}
+
+	protected function reset_sql()
+	{
+		return array('DELETE FROM kt_items', 'ALTER TABLE kt_items AUTO_INCREMENT = 1');
 	}
 }

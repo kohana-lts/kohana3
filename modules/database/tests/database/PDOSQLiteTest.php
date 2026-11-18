@@ -26,6 +26,6 @@ class Kohana_Database_PDOSQLiteTest extends Kohana_Database_DriverTestCase {
 
 	protected function create_table_sql()
 	{
-		return 'CREATE TABLE kt_items (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL, score INTEGER NOT NULL DEFAULT 0)';
+		return 'CREATE TABLE IF NOT EXISTS kt_items (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL, score INTEGER NOT NULL DEFAULT 0)';
 	}
 }

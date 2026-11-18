@@ -38,10 +38,12 @@ class Kohana_ORM_SQLiteTest extends Unittest_TestCase {
 
 		$this->db = Database::instance('kt_orm');
 
-		$this->db->query(NULL, 'DROP TABLE IF EXISTS kt_items');
-		$this->db->query(NULL, 'DROP TABLE IF EXISTS kt_notes');
-		$this->db->query(NULL, 'CREATE TABLE kt_items (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL, score INTEGER NOT NULL DEFAULT 0)');
-		$this->db->query(NULL, 'CREATE TABLE kt_notes (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER NOT NULL, body TEXT NOT NULL)');
+		// Never drop tables: create them once, then empty them and reset the ids
+		$this->db->query(NULL, 'CREATE TABLE IF NOT EXISTS kt_items (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL, score INTEGER NOT NULL DEFAULT 0)');
+		$this->db->query(NULL, 'CREATE TABLE IF NOT EXISTS kt_notes (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER NOT NULL, body TEXT NOT NULL)');
+		$this->db->query(NULL, 'DELETE FROM kt_items');
+		$this->db->query(NULL, 'DELETE FROM kt_notes');
+		$this->db->query(NULL, "DELETE FROM sqlite_sequence WHERE name IN ('kt_items', 'kt_notes')");
 	}
 
 	public function test_create_find_update_delete()
