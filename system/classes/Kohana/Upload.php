@@ -41,10 +41,10 @@ class Kohana_Upload {
 	);
 
 	/**
-	 * Save an uploaded file to a new location. If no filename is provided,
-	 * a random name is used with the lower-case extension of the original
-	 * filename. An extension that is not 1 to 10 letters and digits, or that
-	 * is in [Upload::$blocked_extensions], is dropped.
+	 * Save an uploaded file to a new location. Without a filename, the method
+	 * uses a random name with the lower-case extension of the original
+	 * filename. It drops an extension that is not 1 to 10 letters and digits,
+	 * or that is in [Upload::$blocked_extensions].
 	 *
 	 * [!!] This does not validate the file type. Use [Upload::type] for that.
 	 *

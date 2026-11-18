@@ -40,10 +40,10 @@ class Kohana_Request implements HTTP_Request {
 	 * Returns the client IP address of a request.
 	 *
 	 * Proxy headers count only when REMOTE_ADDR is in [Request::$trusted_proxies].
-	 * X-Forwarded-For is read from the right, because only the entries that
-	 * trusted proxies append are reliable. The result is the first entry that
-	 * is not a trusted proxy. An invalid entry gives REMOTE_ADDR. Client-IP
-	 * counts only when X-Forwarded-For is not set.
+	 * The method reads X-Forwarded-For from the right, because only the entries
+	 * that trusted proxies append are reliable. The result is the first entry
+	 * that is not a trusted proxy. An invalid entry gives REMOTE_ADDR.
+	 * Client-IP counts only when X-Forwarded-For is not set.
 	 *
 	 *     $ip = Request::detect_client_ip($_SERVER);
 	 *

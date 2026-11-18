@@ -574,8 +574,8 @@ class Kohana_Response implements HTTP_Response {
 
 	/**
 	 * Builds a Content-Disposition value with a safe ASCII `filename` and an
-	 * RFC 6266 `filename*` for the UTF-8 name. Quotes, backslashes and
-	 * control characters are removed, so the name cannot add parameters.
+	 * RFC 6266 `filename*` for the UTF-8 name. It removes quotes, backslashes
+	 * and control characters, so that the name cannot add parameters.
 	 *
 	 * @param   string  $disposition  "attachment" or "inline"
 	 * @param   string  $filename     download file name
