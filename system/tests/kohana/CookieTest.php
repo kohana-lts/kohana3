@@ -61,6 +61,95 @@ class Kohana_CookieTest extends Unittest_TestCase
 	}
 
 	/**
+	 * @covers Cookie::set
+	 */
+	public function test_set_sends_httponly_and_samesite_lax_by_default()
+	{
+		$this->assertTrue(Cookie::$httponly);
+		$this->assertSame('Lax', Cookie::$samesite);
+
+		Kohana_CookieTest_TestableCookie::set('cookie', 'value');
+
+		$this->assertSetCookieWith(array(
+			'httponly' => TRUE,
+			'samesite' => 'Lax',
+		));
+	}
+
+	/**
+	 * @covers Cookie::set
+	 */
+	public function test_set_sends_configured_samesite()
+	{
+		$this->setEnvironment(array('Cookie::$samesite' => 'Strict'));
+
+		Kohana_CookieTest_TestableCookie::set('cookie', 'value');
+
+		$this->assertSetCookieWith(array('samesite' => 'Strict'));
+	}
+
+	/**
+	 * @covers Cookie::set
+	 */
+	public function test_set_omits_samesite_when_null()
+	{
+		$this->setEnvironment(array('Cookie::$samesite' => NULL));
+
+		Kohana_CookieTest_TestableCookie::set('cookie', 'value');
+
+		$this->assertArrayNotHasKey('samesite', Kohana_CookieTest_TestableCookie::$_mock_cookies_set[0]);
+	}
+
+	/**
+	 * setcookie() with an options array needs string values.
+	 *
+	 * @covers Cookie::delete
+	 */
+	public function test_delete_sends_string_value_and_domain()
+	{
+		$this->setEnvironment(array('Cookie::$domain' => NULL));
+
+		Kohana_CookieTest_TestableCookie::delete('cookie');
+
+		$this->assertSetCookieWith(array(
+			'value'  => '',
+			'domain' => '',
+		));
+		$this->assertSame('', Kohana_CookieTest_TestableCookie::$_mock_cookies_set[0]['value']);
+		$this->assertSame('', Kohana_CookieTest_TestableCookie::$_mock_cookies_set[0]['domain']);
+	}
+
+	/**
+	 * Session_Native must send the session cookie with the Cookie flags.
+	 *
+	 * @covers Session_Native::_cookie_params
+	 */
+	public function test_native_session_cookie_uses_cookie_flags()
+	{
+		$this->setEnvironment(array(
+			'Cookie::$path'     => '/path',
+			'Cookie::$domain'   => 'my.domain',
+			'Cookie::$secure'   => TRUE,
+			'Cookie::$httponly' => TRUE,
+			'Cookie::$samesite' => 'Strict',
+		));
+
+		$session = new Kohana_CookieTest_TestableSessionNative;
+
+		$this->assertSame(array(
+			'lifetime' => 120,
+			'path'     => '/path',
+			'domain'   => 'my.domain',
+			'secure'   => TRUE,
+			'httponly' => TRUE,
+			'samesite' => 'Strict',
+		), $session->cookie_params());
+
+		Cookie::$samesite = NULL;
+		$this->assertArrayNotHasKey('samesite', $session->cookie_params());
+	}
+
+	/**
 	 * Provider for test_set_calculates_expiry_from_lifetime
 	 *
 	 * @return array of $lifetime, $expect_expiry
@@ -257,7 +346,7 @@ class Kohana_CookieTest extends Unittest_TestCase
 		// To delete the client-side cookie, Cookie::delete should send a new cookie with value NULL and expiry in the past
 		$this->assertSetCookieWith(array(
 			'name'     => $name,
-			'value'    => NULL,
+			'value'    => '',
 			'expire'   => -86400,
 			'path'     => Cookie::$path,
 			'domain'   => Cookie::$domain,
@@ -312,17 +401,24 @@ class Kohana_CookieTest_TestableCookie extends Cookie {
 	/**
 	 * {@inheritdoc}
 	 */
-	protected static function _setcookie($name, $value, $expire, $path, $domain, $secure, $httponly)
+	protected static function _send_cookie($name, $value, array $options)
 	{
-		self::$_mock_cookies_set[] = array(
+		$cookie = array(
 			'name'     => $name,
 			'value'    => $value,
-			'expire'   => $expire,
-			'path'     => $path,
-			'domain'   => $domain,
-			'secure'   => $secure,
-			'httponly' => $httponly
+			'expire'   => $options['expires'],
+			'path'     => $options['path'],
+			'domain'   => $options['domain'],
+			'secure'   => $options['secure'],
+			'httponly' => $options['httponly'],
 		);
+
+		if (array_key_exists('samesite', $options))
+		{
+			$cookie['samesite'] = $options['samesite'];
+		}
+
+		self::$_mock_cookies_set[] = $cookie;
 
 		return TRUE;
 	}
@@ -333,6 +429,23 @@ class Kohana_CookieTest_TestableCookie extends Cookie {
 	protected static function _time()
 	{
 		return Kohana_CookieTest::UNIX_TIMESTAMP;
+	}
+
+}
+
+/**
+ * Exposes the session cookie parameters without a session start.
+ */
+class Kohana_CookieTest_TestableSessionNative extends Session_Native {
+
+	public function __construct()
+	{
+		$this->_lifetime = 120;
+	}
+
+	public function cookie_params()
+	{
+		return $this->_cookie_params();
 	}
 
 }

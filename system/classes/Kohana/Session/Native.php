@@ -24,31 +24,8 @@ class Kohana_Session_Native extends Session {
 	 */
 	protected function _read($id = NULL)
 	{
-		/**
-		 * session_set_cookie_params will override php ini settings
-		 * If Cookie::$domain is NULL or empty and is passed, PHP
-		 * will override ini and sent cookies with the host name
-		 * of the server which generated the cookie
-		 * 
-		 * see issue #3604
-		 * 
-		 * see http://www.php.net/manual/en/function.session-set-cookie-params.php
-		 * see http://www.php.net/manual/en/session.configuration.php#ini.session.cookie-domain
-		 * 
-		 * set to Cookie::$domain if available, otherwise default to ini setting
-		 */
-		$session_cookie_domain = empty(Cookie::$domain)
-		    ? ini_get('session.cookie_domain')
-		    : Cookie::$domain;
-
 		// Sync up the session cookie with Cookie parameters
-		session_set_cookie_params(
-			$this->_lifetime,
-			Cookie::$path,
-			$session_cookie_domain,
-			Cookie::$secure,
-			Cookie::$httponly
-		);
+		session_set_cookie_params($this->_cookie_params());
 
 		// Do not allow PHP to send Cache-Control headers
 		session_cache_limiter(FALSE);
@@ -69,6 +46,32 @@ class Kohana_Session_Native extends Session {
 		$this->_data =& $_SESSION;
 
 		return NULL;
+	}
+
+	/**
+	 * Session cookie parameters from the [Cookie] settings.
+	 *
+	 * An empty Cookie::$domain keeps the session.cookie_domain ini value,
+	 * because an empty domain overrides the ini (issue #3604).
+	 *
+	 * @return  array  options for session_set_cookie_params()
+	 */
+	protected function _cookie_params()
+	{
+		$params = array(
+			'lifetime' => (int) $this->_lifetime,
+			'path'     => (string) Cookie::$path,
+			'domain'   => (string) (empty(Cookie::$domain) ? ini_get('session.cookie_domain') : Cookie::$domain),
+			'secure'   => (bool) Cookie::$secure,
+			'httponly' => (bool) Cookie::$httponly,
+		);
+
+		if (Cookie::$samesite !== NULL)
+		{
+			$params['samesite'] = (string) Cookie::$samesite;
+		}
+
+		return $params;
 	}
 
 	/**

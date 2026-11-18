@@ -31,14 +31,23 @@ class Kohana_Cookie {
 	public static $domain = NULL;
 
 	/**
-	 * @var  boolean  Only transmit cookies over secure connections
+	 * @var  boolean  Only transmit cookies over secure connections. Set it to
+	 *                TRUE on HTTPS sites. The default stays FALSE, so cookies
+	 *                also work on plain HTTP.
 	 */
 	public static $secure = FALSE;
 
 	/**
-	 * @var  boolean  Only transmit cookies over HTTP, disabling Javascript access
+	 * @var  boolean  Only transmit cookies over HTTP, disabling Javascript access.
+	 *                Set it to FALSE only for cookies that scripts must read.
 	 */
-	public static $httponly = FALSE;
+	public static $httponly = TRUE;
+
+	/**
+	 * @var  string  SameSite attribute: 'Lax', 'Strict' or 'None'. NULL sends
+	 *               no attribute. Browsers reject 'None' without [Cookie::$secure].
+	 */
+	public static $samesite = 'Lax';
 
 	/**
 	 * Gets the value of a signed cookie. Cookies without signatures will not
@@ -171,8 +180,7 @@ class Kohana_Cookie {
 	}
 
 	/**
-	 * Proxy for the native setcookie function - to allow mocking in unit tests so that they do not fail when headers
-	 * have been sent.
+	 * Builds the setcookie() options, with [Cookie::$samesite].
 	 *
 	 * @param string  $name
 	 * @param string  $value
@@ -187,7 +195,36 @@ class Kohana_Cookie {
 	 */
 	protected static function _setcookie($name, $value, $expire, $path, $domain, $secure, $httponly)
 	{
-		return setcookie($name, $value, $expire, $path, $domain, $secure, $httponly);
+		$options = array(
+			'expires'  => (int) $expire,
+			'path'     => (string) $path,
+			'domain'   => (string) $domain,
+			'secure'   => (bool) $secure,
+			'httponly' => (bool) $httponly,
+		);
+
+		if (Cookie::$samesite !== NULL)
+		{
+			$options['samesite'] = (string) Cookie::$samesite;
+		}
+
+		return static::_send_cookie((string) $name, (string) $value, $options);
+	}
+
+	/**
+	 * Proxy for the native setcookie function - to allow mocking in unit tests so that they do not fail when headers
+	 * have been sent.
+	 *
+	 * @param string $name
+	 * @param string $value
+	 * @param array  $options  setcookie() options array
+	 *
+	 * @return bool
+	 * @see setcookie
+	 */
+	protected static function _send_cookie($name, $value, array $options)
+	{
+		return setcookie($name, $value, $options);
 	}
 
 	/**
