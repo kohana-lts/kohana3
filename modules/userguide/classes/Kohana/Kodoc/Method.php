@@ -30,6 +30,26 @@ class Kohana_Kodoc_Method extends Kodoc {
 	 */
 	public $source;
 
+	/**
+	 * @var  ReflectionClass  the class that declares the method
+	 */
+	public $class;
+
+	/**
+	 * @var  string  modifiers: public, private, static, etc
+	 */
+	public $modifiers;
+
+	/**
+	 * @var  string  description of the method from its DocBlock
+	 */
+	public $description;
+
+	/**
+	 * @var  array  DocBlock tags
+	 */
+	public $tags = array();
+
 	public function __construct($class, $method)
 	{
 		$this->method = new ReflectionMethod($class, $method);

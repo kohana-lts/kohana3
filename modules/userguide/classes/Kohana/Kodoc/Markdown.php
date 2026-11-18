@@ -148,7 +148,7 @@ class Kohana_Kodoc_Markdown extends MarkdownExtra_Parser {
 	 */
 	function make_heading_id($heading)
 	{
-		$id = url::title($heading, '-', TRUE);
+		$id = URL::title($heading, '-', TRUE);
 		
 		if (isset($this->_heading_ids[$id]))
 		{
@@ -188,7 +188,7 @@ class Kohana_Kodoc_Markdown extends MarkdownExtra_Parser {
 						*
 						* NOTE: Is this really the correct way to handle an exception?
 						*/
-						$response = Kohana_exception::_handler($e);
+						$response = Kohana_Exception::_handler($e);
 
 						$replace[$search] = $response->body();
 					}
