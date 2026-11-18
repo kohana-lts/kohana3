@@ -547,10 +547,10 @@ class Kohana_Validation implements ArrayAccess {
 					}
 
 					// Check if a label for this parameter exists
-					if (isset($this->_labels[$value]))
+					if (isset($this->_labels[$value ?? '']))
 					{
 						// Use the label as the value, eg: related field name for "matches"
-						$value = $this->_labels[$value];
+						$value = $this->_labels[$value ?? ''];
 
 						if ($translate)
 						{
