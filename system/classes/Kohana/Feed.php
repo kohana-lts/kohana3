@@ -11,13 +11,17 @@
 class Kohana_Feed {
 
 	/**
-	 * Parses a remote feed into an array.
+	 * Parses a remote feed into an array. The feed is an http(s) URL, a raw
+	 * XML string, or a local file path when $allow_local is TRUE.
 	 *
-	 * @param   string  $feed   remote feed URL
-	 * @param   integer $limit  item limit to fetch
+	 * [!!] Never pass user input as $feed with $allow_local set to TRUE.
+	 *
+	 * @param   string  $feed         remote feed URL, XML string or local file path
+	 * @param   integer $limit        item limit to fetch
+	 * @param   boolean $allow_local  read $feed as a local file path when the file exists
 	 * @return  array
 	 */
-	public static function parse($feed, $limit = 0)
+	public static function parse($feed, $limit = 0, $allow_local = FALSE)
 	{
 		// Check if SimpleXML is installed
 		if ( ! function_exists('simplexml_load_file'))
@@ -30,15 +34,15 @@ class Kohana_Feed {
 		$error_level = error_reporting(0);
 
 		// Allow loading by filename or raw XML string
-		if (Valid::url($feed))
+		if (Valid::url($feed, array('http', 'https')))
 		{
 			// Use native Request client to get remote contents
 			$response = Request::factory($feed)->execute();
 			$feed     = $response->body();
 		}
-		elseif (is_file($feed))
+		elseif ($allow_local === TRUE AND strpos($feed, '://') === FALSE AND is_file($feed))
 		{
-			// Get file contents
+			// A plain path only: no stream wrappers such as phar:// or php://
 			$feed = file_get_contents($feed);
 		}
 

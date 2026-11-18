@@ -204,4 +204,59 @@ class Kohana_Request_Client_ExternalTest extends Unittest_TestCase {
 		$this->expectException(Request_Exception::class);
 		$request->execute();
 	}
+
+	/**
+	 * The curl client must not read local files or use non-HTTP protocols.
+	 *
+	 * @test
+	 * @requires extension curl
+	 */
+	public function test_curl_client_rejects_file_protocol()
+	{
+		$file = realpath(__DIR__.'/../../../test_data/feeds/example.rss20');
+
+		$request = new Request('file://'.$file);
+		$request->client(Request_Client_External::factory(array(), 'Request_Client_Curl'));
+
+		$this->expectException(Request_Exception::class);
+		$this->expectExceptionMessageMatches('/protocol/i');
+		$request->execute();
+	}
+
+	/**
+	 * The client options can allow other protocols. Curl then reads the
+	 * file, and the response has no HTTP status.
+	 *
+	 * @test
+	 * @requires extension curl
+	 */
+	public function test_curl_client_protocols_option_overrides_default()
+	{
+		$file = realpath(__DIR__.'/../../../test_data/feeds/example.rss20');
+
+		$request = new Request('file://'.$file);
+		$request->client(Request_Client_External::factory(array(
+			'options' => array(CURLOPT_PROTOCOLS => CURLPROTO_FILE),
+		), 'Request_Client_Curl'));
+
+		$this->expectException(Kohana_Exception::class);
+		$this->expectExceptionMessage('unknown status value : 0');
+		$request->execute();
+	}
+
+	/**
+	 * The stream client must not open local files or other stream wrappers.
+	 *
+	 * @test
+	 */
+	public function test_stream_client_rejects_file_protocol()
+	{
+		$file = realpath(__DIR__.'/../../../test_data/feeds/example.rss20');
+
+		$request = new Request('file://'.$file);
+		$request->client(Request_Client_External::factory(array(), 'Request_Client_Stream'));
+
+		$this->expectException(Request_Exception::class);
+		$request->execute();
+	}
 }

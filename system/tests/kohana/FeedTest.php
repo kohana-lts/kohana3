@@ -54,12 +54,56 @@ class Kohana_FeedTest extends Unittest_TestCase
 	public function test_parse($source, $expected_titles)
 	{
 		$titles = array();
-		foreach (Feed::parse($source) as $item)
+		foreach (Feed::parse($source, 0, TRUE) as $item)
 		{
 			$titles[] = $item['title'];
 		}
 
 		$this->assertSame($expected_titles, $titles);
+	}
+
+	/**
+	 * Provides sources that Feed::parse() must not read by default
+	 *
+	 * @return array
+	 */
+	public function provider_parse_does_not_read_local_files()
+	{
+		$file = realpath(__DIR__.'/../test_data/feeds/example.rss20');
+
+		return array(
+			array($file, FALSE),
+			array('file://'.$file, FALSE),
+			array('file://'.$file, TRUE),
+			array('php://filter/resource='.$file, TRUE),
+		);
+	}
+
+	/**
+	 * Feed::parse() reads a local file only with $allow_local, and never
+	 * through a stream wrapper.
+	 *
+	 * @test
+	 * @dataProvider provider_parse_does_not_read_local_files
+	 * @covers feed::parse
+	 * @param string  $source       local path or wrapper URL
+	 * @param boolean $allow_local  third argument of Feed::parse()
+	 */
+	public function test_parse_does_not_read_local_files($source, $allow_local)
+	{
+		$this->assertSame(array(), Feed::parse($source, 0, $allow_local));
+	}
+
+	/**
+	 * @test
+	 * @covers feed::parse
+	 */
+	public function test_parse_reads_raw_xml()
+	{
+		$xml = file_get_contents(__DIR__.'/../test_data/feeds/example.rss20');
+
+		$items = Feed::parse($xml);
+		$this->assertSame('Example entry', $items[0]['title']);
 	}
 
 	/**

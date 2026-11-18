@@ -29,6 +29,13 @@ class Kohana_Request_Client_Stream extends Request_Client_External {
 	 */
 	public function _send_message(Request $request, Response $response)
 	{
+		// fopen() accepts every stream wrapper, so allow only HTTP(S)
+		if ( ! preg_match('#^https?://#i', $request->uri()))
+		{
+			throw new Request_Exception('Request_Client_Stream supports only http and https URLs: :url',
+				array(':url' => $request->uri()));
+		}
+
 		// Calculate stream mode
 		$mode = ($request->method() === HTTP_Request::GET) ? 'r' : 'r+';
 
@@ -47,7 +54,7 @@ class Kohana_Request_Client_Stream extends Request_Client_External {
 		}
 
 		// Set the content length
-		$request->headers('content-length', (string) strlen($body));
+		$request->headers('content-length', (string) strlen((string) $body));
 
 		list($protocol) = explode('/', $request->protocol());
 

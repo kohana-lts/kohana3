@@ -69,6 +69,13 @@ class Kohana_Request_Client_Curl extends Request_Client_External {
 		// Apply any additional options set to
 		$options += $this->_options;
 
+		// Only HTTP(S), also after a redirect: no file://, gopher:// or dict:// requests.
+		// Set CURLOPT_PROTOCOLS or CURLOPT_REDIR_PROTOCOLS in the client options to change it.
+		$options += array(
+			CURLOPT_PROTOCOLS       => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+			CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+		);
+
 		$uri = $request->uri();
 
 		if ($query = $request->query())
