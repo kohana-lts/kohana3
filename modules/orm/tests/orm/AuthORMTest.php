@@ -161,6 +161,20 @@ class Kohana_ORM_AuthORMTest extends Unittest_TestCase {
 	}
 
 	/**
+	 * PHP 8 throws a TypeError for count() on a model.
+	 */
+	public function test_has_with_model()
+	{
+		$user = $this->insert_user('gina', 'x');
+
+		$this->assertTrue($user->has('roles', ORM::factory('Role', array('name' => 'login'))));
+		$this->assertFalse($user->has('roles', ORM::factory('Role', array('name' => 'admin'))));
+		$this->assertFalse($user->has('roles', ORM::factory('Role', array('name' => 'missing'))));
+		$this->assertTrue($user->has('roles', 1));
+		$this->assertFalse($user->has('roles', array(1, 2)));
+	}
+
+	/**
 	 * update_user() without a list of columns must not set logins or the id.
 	 */
 	public function test_update_user_without_expected_sets_only_safe_columns()
