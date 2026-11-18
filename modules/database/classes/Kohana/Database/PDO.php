@@ -74,6 +74,11 @@ class Kohana_Database_PDO extends Database {
 			'persistent' => FALSE,
 		));
 
+		$dsn = $this->_dsn_with_charset($dsn);
+
+		// A DSN alias for MySQL still needs SET NAMES
+		$set_names = (stripos($dsn, 'mysql:') !== 0);
+
 		// Clear the connection parameters for security
 		unset($this->_config['connection']);
 
@@ -98,11 +103,37 @@ class Kohana_Database_PDO extends Database {
 				$e->getCode());
 		}
 
-		if ( ! empty($this->_config['charset']))
+		if ( ! empty($this->_config['charset']) AND $set_names)
 		{
-			// Set the character set
+			// Fallback for drivers without a DSN charset
 			$this->set_charset($this->_config['charset']);
 		}
+	}
+
+	/**
+	 * Adds the configured charset to a mysql DSN that has none. The client
+	 * library must know the charset, else PDO::quote() can escape wrongly
+	 * for multibyte charsets such as GBK. A charset in the DSN has priority.
+	 *
+	 * @param   string  $dsn
+	 * @return  string
+	 * @throws  Database_Exception  for a charset name that is not a word
+	 */
+	protected function _dsn_with_charset($dsn)
+	{
+		if (empty($this->_config['charset']) OR stripos($dsn, 'mysql:') !== 0)
+			return $dsn;
+
+		$charset = (string) $this->_config['charset'];
+
+		if ( ! preg_match('/^\w+$/D', $charset))
+			throw new Database_Exception('Invalid database charset :charset', array(':charset' => $charset));
+
+		// pdo_mysql matches option names case-sensitively
+		if (preg_match('/(?:^|;)\s*charset=/', substr($dsn, 6)))
+			return $dsn;
+
+		return rtrim($dsn, ';').';charset='.$charset;
 	}
 
 	/**
