@@ -34,7 +34,7 @@ abstract class Kohana_Unittest_TestCase extends \PHPUnit\Framework\TestCase {
 	 * Extending classes that have their own setUp() should call
 	 * parent::setUp()
 	 */
-	public function setUp(): void
+	protected function setUp(): void
 	{
 		$this->_helpers = new Unittest_Helpers;
 
@@ -47,7 +47,7 @@ abstract class Kohana_Unittest_TestCase extends \PHPUnit\Framework\TestCase {
 	 * Extending classes that have their own tearDown()
 	 * should call parent::tearDown()
 	 */
-	public function tearDown(): void
+	protected function tearDown(): void
 	{
 		if ($this->_helpers)
 		{
@@ -237,11 +237,6 @@ abstract class Kohana_Unittest_TestCase extends \PHPUnit\Framework\TestCase {
 		{
 			parent::assertContains($needle, $haystack, $message);
 		}
-	}
-
-	public static function assertRegExp($pattern, $string, $message = '')
-	{
-		static::assertMatchesRegularExpression($pattern, $string, $message);
 	}
 
 	/**
