@@ -1,4 +1,4 @@
-<?php defined('SYSPATH') OR die('Kohana bootstrap needs to be included before tests run');
+<?php
 
 /**
  * Tests the encrypt class
@@ -16,201 +16,169 @@
  */
 class Kohana_EncryptTest extends Unittest_TestCase
 {
+	const KEY = 'trwQwVXX96TIJoKxyBHB9AJkwAOHixuV1ENZmIWyanI0j1zNgSVvqywy044Agaj';
 
 	/**
-	 * Provider for test_encode
-	 * AES Multiblock Message Test (MMT) Sample Vectors - Known Answer Test (KAT)
-	 * @link http://csrc.nist.gov/groups/STM/cavp/index.html NIST - Cryptographic Algorithm Validation Program
-	 * @link http://csrc.nist.gov/groups/STM/cavp/documents/aes/aesmmt.zip file used CBCMMT128.rsp
-	 *
-	 * @return array of $mode, $cipher, $key, $iv, $txt_plain, $txt_encoded
+	 * @return array of $txt_plain
 	 */
-	public function provider_encode()
+	public function provider_plain_texts()
 	{
 		return array(
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "1f8e4973953f3fb0bd6b16662e9a3c17"),
-				// IV
-				pack("H*", "2fe2b333ceda8f98f4a99b40d2cd34a8"),
-				// txt_plain
-				pack("H*", "45cf12964fc824ab76616ae2f4bf0822"),
-				// txt_encoded
-				pack("H*", "0f61c4d44c5147c03c195ad7e2cc12b2"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "1f8e4973953f3fb0bd6b16662e9a3c17"),
-				// IV
-				pack("H*", "2fe2b333ceda8f98f4a99b40d2cd34a8"),
-				// txt_plain
-				pack("H*", "45cf12964fc824ab76616ae2f4bf0822"),
-				// txt_encoded
-				pack("H*", "0f61c4d44c5147c03c195ad7e2cc12b2"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "0700d603a1c514e46b6191ba430a3a0c"),
-				// IV
-				pack("H*", "aad1583cd91365e3bb2f0c3430d065bb"),
-				// txt_plain
-				pack("H*", "068b25c7bfb1f8bdd4cfc908f69dffc5ddc726a197f0e5f720f730393279be91"),
-				// txt_encoded
-				pack("H*", "c4dc61d9725967a3020104a9738f23868527ce839aab1752fd8bdb95a82c4d00"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "3348aa51e9a45c2dbe33ccc47f96e8de"),
-				// IV
-				pack("H*", "19153c673160df2b1d38c28060e59b96"),
-				// txt_plain
-				pack("H*", "9b7cee827a26575afdbb7c7a329f887238052e3601a7917456ba61251c214763d5e1847a6ad5d54127a399ab07ee3599"),
-				// txt_encoded
-				pack("H*", "d5aed6c9622ec451a15db12819952b6752501cf05cdbf8cda34a457726ded97818e1f127a28d72db5652749f0c6afee5"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "b7f3c9576e12dd0db63e8f8fac2b9a39"),
-				// IV
-				pack("H*", "c80f095d8bb1a060699f7c19974a1aa0"),
-				// txt_plain
-				pack("H*", "9ac19954ce1319b354d3220460f71c1e373f1cd336240881160cfde46ebfed2e791e8d5a1a136ebd1dc469dec00c4187722b841cdabcb22c1be8a14657da200e"),
-				// txt_encoded
-				pack("H*", "19b9609772c63f338608bf6eb52ca10be65097f89c1e0905c42401fd47791ae2c5440b2d473116ca78bd9ff2fb6015cfd316524eae7dcb95ae738ebeae84a467"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "b6f9afbfe5a1562bba1368fc72ac9d9c"),
-				// IV
-				pack("H*", "3f9d5ebe250ee7ce384b0d00ee849322"),
-				// txt_plain
-				pack("H*", "db397ec22718dbffb9c9d13de0efcd4611bf792be4fce0dc5f25d4f577ed8cdbd4eb9208d593dda3d4653954ab64f05676caa3ce9bfa795b08b67ceebc923fdc89a8c431188e9e482d8553982cf304d1"),
-				// txt_encoded
-				pack("H*", "10ea27b19e16b93af169c4a88e06e35c99d8b420980b058e34b4b8f132b13766f72728202b089f428fecdb41c79f8aa0d0ef68f5786481cca29e2126f69bc14160f1ae2187878ba5c49cf3961e1b7ee9"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "bbe7b7ba07124ff1ae7c3416fe8b465e"),
-				// IV
-				pack("H*", "7f65b5ee3630bed6b84202d97fb97a1e"),
-				// txt_plain
-				pack("H*", "2aad0c2c4306568bad7447460fd3dac054346d26feddbc9abd9110914011b4794be2a9a00a519a51a5b5124014f4ed2735480db21b434e99a911bb0b60fe0253763725b628d5739a5117b7ee3aefafc5b4c1bf446467e7bf5f78f31ff7caf187"),
-				// txt_encoded
-				pack("H*", "3b8611bfc4973c5cd8e982b073b33184cd26110159172e44988eb5ff5661a1e16fad67258fcbfee55469267a12dc374893b4e3533d36f5634c3095583596f135aa8cd1138dc898bc5651ee35a92ebf89ab6aeb5366653bc60a70e0074fc11efe"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "89a553730433f7e6d67d16d373bd5360"),
-				// IV
-				pack("H*", "f724558db3433a523f4e51a5bea70497"),
-				// txt_plain
-				pack("H*", "807bc4ea684eedcfdcca30180680b0f1ae2814f35f36d053c5aea6595a386c1442770f4d7297d8b91825ee7237241da8925dd594ccf676aecd46ca2068e8d37a3a0ec8a7d5185a201e663b5ff36ae197110188a23503763b8218826d23ced74b31e9f6e2d7fbfa6cb43420c7807a8625"),
-				// txt_encoded
-				pack("H*", "406af1429a478c3d07e555c5287a60500d37fc39b68e5bbb9bafd6ddb223828561d6171a308d5b1a4551e8a5e7d572918d25c968d3871848d2f16635caa9847f38590b1df58ab5efb985f2c66cfaf86f61b3f9c0afad6c963c49cee9b8bc81a2ddb06c967f325515a4849eec37ce721a"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "c491ca31f91708458e29a925ec558d78"),
-				// IV
-				pack("H*", "9ef934946e5cd0ae97bd58532cb49381"),
-				// txt_plain
-				pack("H*", "cb6a787e0dec56f9a165957f81af336ca6b40785d9e94093c6190e5152649f882e874d79ac5e167bd2a74ce5ae088d2ee854f6539e0a94796b1e1bd4c9fcdbc79acbef4d01eeb89776d18af71ae2a4fc47dd66df6c4dbe1d1850e466549a47b636bcc7c2b3a62495b56bb67b6d455f1eebd9bfefecbca6c7f335cfce9b45cb9d"),
-				// txt_encoded
-				pack("H*", "7b2931f5855f717145e00f152a9f4794359b1ffcb3e55f594e33098b51c23a6c74a06c1d94fded7fd2ae42c7db7acaef5844cb33aeddc6852585ed0020a6699d2cb53809cefd169148ce42292afab063443978306c582c18b9ce0da3d084ce4d3c482cfd8fcf1a85084e89fb88b40a084d5e972466d07666126fb761f84078f2"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "f6e87d71b0104d6eb06a68dc6a71f498"),
-				// IV
-				pack("H*", "1c245f26195b76ebebc2edcac412a2f8"),
-				// txt_plain
-				pack("H*", "f82bef3c73a6f7f80db285726d691db6bf55eec25a859d3ba0e0445f26b9bb3b16a3161ed1866e4dd8f2e5f8ecb4e46d74a7a78c20cdfc7bcc9e479ba7a0caba9438238ad0c01651d5d98de37f03ddce6e6b4bd4ab03cf9e8ed818aedfa1cf963b932067b97d776dce1087196e7e913f7448e38244509f0caf36bd8217e15336d35c149fd4e41707893fdb84014f8729"),
-				// txt_encoded
-				pack("H*", "b09512f3eff9ed0d85890983a73dadbb7c3678d52581be64a8a8fc586f490f2521297a478a0598040ebd0f5509fafb0969f9d9e600eaef33b1b93eed99687b167f89a5065aac439ce46f3b8d22d30865e64e45ef8cd30b6984353a844a11c8cd60dba0e8866b3ee30d24b3fa8a643b328353e06010fa8273c8fd54ef0a2b6930e5520aae5cd5902f9b86a33592ca4365"),
-			),
-			array(
-				// mode
-				MCRYPT_MODE_CBC,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// key
-				pack("H*", "2c14413751c31e2730570ba3361c786b"),
-				// IV
-				pack("H*", "1dbbeb2f19abb448af849796244a19d7"),
-				// txt_plain
-				pack("H*", "40d930f9a05334d9816fe204999c3f82a03f6a0457a8c475c94553d1d116693adc618049f0a769a2eed6a6cb14c0143ec5cccdbc8dec4ce560cfd206225709326d4de7948e54d603d01b12d7fed752fb23f1aa4494fbb00130e9ded4e77e37c079042d828040c325b1a5efd15fc842e44014ca4374bf38f3c3fc3ee327733b0c8aee1abcd055772f18dc04603f7b2c1ea69ff662361f2be0a171bbdcea1e5d3f"),
-				// txt_encoded
-				pack("H*", "6be8a12800455a320538853e0cba31bd2d80ea0c85164a4c5c261ae485417d93effe2ebc0d0a0b51d6ea18633d210cf63c0c4ddbc27607f2e81ed9113191ef86d56f3b99be6c415a4150299fb846ce7160b40b63baf1179d19275a2e83698376d28b92548c68e06e6d994e2c1501ed297014e702cdefee2f656447706009614d801de1caaf73f8b7fa56cf1ba94b631933bbe577624380850f117435a0355b2b"),
-			),
+			array(''),
+			array('a'),
+			array('The quick brown fox jumps over the lazy dog'),
+			array(str_repeat('x', 16)),
+			array("binary \x00\x01\xff data with trailing nulls\x00\x00"),
+			array('Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'),
 		);
 	}
 
 	/**
-	 * @param string $mode
-	 * @param string $cipher
-	 * @param string $key Encryption key
-	 * @param string $iv Initialization vector
-	 * @param string $txt_plain Plain text to be encrypted
-	 * @param string $txt_encoded Known ecrypted text
-	 *
-	 * @dataProvider provider_encode
+	 * @dataProvider provider_plain_texts
 	 * @covers Encrypt::encode
+	 * @covers Encrypt::decode
 	 */
-	public function test_encode($mode, $cipher, $key, $iv, $txt_plain, $txt_encoded)
+	public function test_encode_decode($txt_plain)
 	{
-		// initialize
-		$e = new Kohana_EncryptTest_IvStubbed($key, $iv, $mode, $cipher);
+		$e = new Encrypt(self::KEY);
 
-		// prepare data
-		$expected = base64_encode($iv . $txt_encoded);
-		$actual = $e->encode($txt_plain);
-
-		// assert
-		$this->assertSame($expected, $actual);
+		$this->assertSame($txt_plain, $e->decode($e->encode($txt_plain)));
 	}
 
 	/**
-	 * Provider for test_decode
+	 * @dataProvider provider_plain_texts
+	 * @covers Encrypt::encode
+	 */
+	public function test_encode_output_is_printable($txt_plain)
+	{
+		$e = new Encrypt(self::KEY);
+
+		$this->assertMatchesRegularExpression('#^v2:[A-Za-z0-9+/]+={0,2}$#D', $e->encode($txt_plain));
+	}
+
+	/**
+	 * @dataProvider provider_plain_texts
+	 * @covers Encrypt::encode
+	 */
+	public function test_consecutive_encode_produce_different_results($txt_plain)
+	{
+		$e = new Encrypt(self::KEY);
+
+		$this->assertNotSame($e->encode($txt_plain), $e->encode($txt_plain));
+	}
+
+	/**
+	 * @covers Encrypt::decode
+	 */
+	public function test_decode_fails_with_other_key()
+	{
+		$e1 = new Encrypt(self::KEY);
+		$e2 = new Encrypt(self::KEY.'x');
+
+		$this->assertFalse($e2->decode($e1->encode('secret')));
+	}
+
+	/**
+	 * Changing any byte of the IV, ciphertext or MAC must make decode() fail.
+	 *
+	 * @covers Encrypt::decode
+	 */
+	public function test_decode_rejects_changed_values()
+	{
+		$e = new Encrypt(self::KEY);
+
+		$encoded = $e->encode('The quick brown fox jumps over the lazy dog');
+		$raw = base64_decode(substr($encoded, 3));
+
+		for ($i = 0; $i < strlen($raw); $i++)
+		{
+			$changed = $raw;
+			$changed[$i] = chr(ord($changed[$i]) ^ 0x01);
+
+			$this->assertFalse($e->decode('v2:'.base64_encode($changed)), 'Byte '.$i.' was changed');
+		}
+
+		// Truncated and extended values
+		$this->assertFalse($e->decode('v2:'.base64_encode(substr($raw, 0, -1))));
+		$this->assertFalse($e->decode('v2:'.base64_encode(substr($raw, 16))));
+		$this->assertFalse($e->decode('v2:'.base64_encode($raw.'x')));
+	}
+
+	/**
+	 * @return array of $txt_invalid_encoded
+	 */
+	public function provider_decode_invalid_data()
+	{
+		return array(
+			array(NULL),
+			array(array()),
+			array(''),
+			array('v2:'),
+			array('v2:.:This data is not a valid base 64 string:.'),
+			array('v2:'.base64_encode('too short')),
+			array(base64_encode(str_repeat('a', 64))),
+			array('.:This data is not a valid base 64 string:.'),
+		);
+	}
+
+	/**
+	 * @dataProvider provider_decode_invalid_data
+	 * @covers Encrypt::decode
+	 */
+	public function test_decode_invalid_data($txt_invalid_encoded)
+	{
+		$e = new Encrypt(self::KEY);
+
+		$this->assertFalse($e->decode($txt_invalid_encoded));
+	}
+
+	/**
+	 * Values from the mcrypt Encrypt of Kohana 3.3.6, made with PHP 5.6 and
+	 * ext/mcrypt (test_data/encrypt_mcrypt_vectors.json).
+	 *
+	 * @return array of $mode, $key, $txt_plain, $txt_encoded
+	 */
+	public function provider_mcrypt_vectors()
+	{
+		$file = Kohana::find_file('tests', 'test_data/encrypt_mcrypt_vectors', 'json');
+		$data = array();
+
+		foreach (json_decode(file_get_contents($file), TRUE) as $row)
+		{
+			list($mode, $key, $txt_plain, $txt_encoded) = $row;
+
+			$data[] = array($mode, base64_decode($key), base64_decode($txt_plain), $txt_encoded);
+		}
+
+		return $data;
+	}
+
+	/**
+	 * @dataProvider provider_mcrypt_vectors
+	 * @covers Encrypt::decode
+	 */
+	public function test_decode_mcrypt_values_in_legacy_mode($mode, $key, $txt_plain, $txt_encoded)
+	{
+		$e = new Encrypt($key, $mode, 'rijndael-128', TRUE);
+
+		// mcrypt padded with \0 bytes and decode() removed them
+		$this->assertSame(rtrim($txt_plain, "\0"), $e->decode($txt_encoded));
+	}
+
+	/**
+	 * Unauthenticated mcrypt values must not decode unless legacy mode is on.
+	 *
+	 * @dataProvider provider_mcrypt_vectors
+	 * @covers Encrypt::decode
+	 */
+	public function test_mcrypt_values_rejected_by_default($mode, $key, $txt_plain, $txt_encoded)
+	{
+		$e = new Encrypt($key, $mode, 'rijndael-128');
+
+		$this->assertFalse($e->decode($txt_encoded));
+	}
+
+	/**
 	 * AES Multiblock Message Test (MMT) Sample Vectors - Known Answer Test (KAT)
 	 * @link http://csrc.nist.gov/groups/STM/cavp/index.html NIST - Cryptographic Algorithm Validation Program
 	 * @link http://csrc.nist.gov/groups/STM/cavp/documents/aes/aesmmt.zip file used CBCMMT128.rsp
@@ -222,9 +190,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 		return array(
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "6a7082cf8cda13eff48c8158dda206ae"),
 				// IV
@@ -236,9 +204,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			),
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "625eefa18a4756454e218d8bfed56e36"),
 				// IV
@@ -250,9 +218,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			),
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "fd6e0b954ae2e3b723d6c9fcae6ab09b"),
 				// IV
@@ -264,9 +232,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			),
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "7b1ab9144b0239315cd5eec6c75663bd"),
 				// IV
@@ -278,9 +246,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			),
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "36466b6bd25ea3857ea42f0cac1919b1"),
 				// IV
@@ -292,9 +260,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			),
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "89373ee6e28397640d5082eed4123239"),
 				// IV
@@ -306,9 +274,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			),
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "bab0cceddc0abd63e3f82e9fbff7b8aa"),
 				// IV
@@ -320,9 +288,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			),
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "9c702898efa44557b29ed283f5bc0293"),
 				// IV
@@ -334,9 +302,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			),
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "5674636dbdb38f705f0b08c372ef4785"),
 				// IV
@@ -348,9 +316,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			),
 			array(
 				// mode
-				MCRYPT_MODE_CBC,
+				'cbc',
 				// cypher
-				MCRYPT_RIJNDAEL_128,
+				'rijndael-128',
 				// key
 				pack("H*", "97a1025529b9925e25bbe78770ca2f99"),
 				// IV
@@ -364,225 +332,40 @@ class Kohana_EncryptTest extends Unittest_TestCase
 	}
 
 	/**
-	 * @param string $mode
-	 * @param string $cipher
-	 * @param string $key Encryption key
-	 * @param string $iv Initialization vector
-	 * @param string $txt_encoded ecrypted text
-	 * @param string $txt_plain Known plain text that is decripted
+	 * Legacy mode decodes base64(IV + ciphertext), as the mcrypt Encrypt wrote it.
 	 *
 	 * @dataProvider provider_decode
 	 * @covers Encrypt::decode
 	 */
-	public function test_decode($mode, $cipher, $key, $iv, $txt_encoded, $txt_plain)
+	public function test_decode_nist_vectors_in_legacy_mode($mode, $cipher, $key, $iv, $txt_encoded, $txt_plain)
 	{
-		// initialize
-		$e = new Encrypt($key, $mode, $cipher);
+		$e = new Encrypt($key, $mode, $cipher, TRUE);
 
-		// prepare data
-		$expected = $txt_plain;
-		$actual = $e->decode(base64_encode($iv . $txt_encoded));
-
-		// assert
-		$this->assertSame($expected, $actual);
+		$this->assertSame(rtrim($txt_plain, "\0"), $e->decode(base64_encode($iv.$txt_encoded)));
 	}
 
 	/**
-	 * Provider for test_encode_decode, test_consecutive_encode_different_results
-	 *
-	 * @return array of $key, $mode, $cipher, $txt_plain
-	 */
-	public function provider_encode_decode()
-	{
-		return array(
-			array(
-				// key
-				"Some super secret key",
-				// mode
-				MCRYPT_MODE_NOFB,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// txt_plain
-				"The quick brown fox jumps over the lazy dog",
-			),
-			array(
-				// key
-				"De finibus bonorum et malorum",
-				// mode
-				MCRYPT_MODE_NOFB,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// txt_plain
-				"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-			),
-		);
-	}
-
-	/**
-	 * @param type $key Encryption Key
-	 * @param type $mode Encryption Mode
-	 * @param type $cipher Encryption Cipher
-	 * @param type $txt_plain Plain text to encode and then decode back
-	 *
-	 * @dataProvider provider_encode_decode
-	 * @covers Encrypt::encode
 	 * @covers Encrypt::decode
 	 */
-	public function test_encode_decode($key, $mode, $cipher, $txt_plain)
+	public function test_legacy_mode_rejects_unsupported_cipher()
 	{
-		// initialize, encode
-		$e = new Encrypt($key, $mode, $cipher);
-		$txt_encoded = $e->encode($txt_plain);
+		$e = new Encrypt(self::KEY, 'cbc', 'blowfish', TRUE);
 
-		// prepare data
-		$expected = $txt_plain;
-		$actual = $e->decode($txt_encoded);
-
-		// assert
-		$this->assertSame($expected, $actual);
+		$this->assertFalse($e->decode(base64_encode(str_repeat('a', 32))));
 	}
 
 	/**
-	 * Provider for test_decode_invalid_data
-	 *
-	 * @return array of $key, $mode, $cipher, $txt_invalid_encoded
+	 * @covers Encrypt::__construct
 	 */
-	public function provider_decode_invalid_data()
+	public function test_constructor_rejects_empty_key()
 	{
-		return array(
-			array(
-				// key
-				"Some super secret key",
-				// mode
-				MCRYPT_MODE_NOFB,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// txt_invalid_encoded
-				".:This data is not a valid base 64 string:.",
-			),
-			array(
-				// key
-				"Some super secret key",
-				// mode
-				MCRYPT_MODE_NOFB,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// txt_invalid_encoded
-				base64_encode("too short"),
-			),
-		);
+		$this->expectException(Kohana_Exception::class);
+
+		new Encrypt('');
 	}
 
 	/**
-	 * Tests for decode when the string is not valid base64,
-	 * or is too short to contain a valid IV
-	 *
-	 * @param type $key
-	 * @param type $mode
-	 * @param type $cipher
-	 * @param type $txt_encoded
-	 *
-	 * @dataProvider provider_decode_invalid_data
-	 */
-	public function test_decode_invalid_data($key, $mode, $cipher, $txt_invalid_encoded)
-	{
-		// initialize
-		$e = new Encrypt($key, $mode, $cipher);
-
-		// assert
-		$this->AssertFalse($e->decode($txt_invalid_encoded));
-	}
-
-	/**
-	 * @param type $key Encryption Key
-	 * @param type $mode Encryption Mode
-	 * @param type $cipher Encryption Cipher
-	 * @param type $txt_plain Plain text to encode and then decode back
-	 *
-	 * @dataProvider provider_encode_decode
-	 * @covers Encrypt::encode
-	 */
-	public function test_consecutive_encode_produce_different_results($key, $mode, $cipher, $txt_plain)
-	{
-		// initialize, encode twice
-		$e = new Encrypt($key, $mode, $cipher);
-		$txt_encoded_first = $e->encode($txt_plain);
-		$txt_encoded_second = $e->encode($txt_plain);
-
-		// assert
-		$this->assertNotEquals($txt_encoded_first, $txt_encoded_second);
-	}
-
-	/**
-	 * Provider for test_key_normalization
-	 *
-	 * @return array of $key, $iv, $mode, $cipher, $txt_plain
-	 */
-	public function provider_key_normalization()
-	{
-		return array(
-			array(
-				// key
-				"Some super secret key",
-				// IV
-				pack("H*", "2fe2b333ceda8f98f4a99b40d2cd34a8"),
-				// mode
-				MCRYPT_MODE_NOFB,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// txt_plain
-				"The quick brown fox jumps over the lazy dog",
-			),
-			array(
-				// key
-				"De finibus bonorum et malorum",
-				// IV
-				pack("H*", "2fe2b333ceda8f98f4a99b40d2cd34a8"),
-				// mode
-				MCRYPT_MODE_NOFB,
-				// cypher
-				MCRYPT_RIJNDAEL_128,
-				// txt_plain
-				"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-			),
-		);
-	}
-
-	/**
-	 * Test if key normalization logic behaves well
-	 * Encrypt::_normalize_key was ment for PHP > 5.6.0
-	 *
-	 * We are testing our key normalization only against lower versions of PHP
-	 * (PHP < 5.6.0) to see if it matches the internal key padding those
-	 * PHP versions already have
-	 *
-	 * @param type $key Encryption Key
-	 * @param type $mode Encryption Mode
-	 * @param type $cipher Encryption Cipher
-	 * @param type $txt_plain Plain text to encode and then decode back
-	 *
-	 * @dataProvider provider_key_normalization
-	 * @covers Encrypt::_normalize_key
-	 */
-	public function test_key_normalization($key, $iv, $mode, $cipher, $txt_plain)
-	{
-		if (version_compare(PHP_VERSION, '5.6.0', '>='))
-		{
-			$this->markTestSkipped('Starting from PHP 5.6.0, mcrypt does not pad encryption keys with null bytes.');
-		}
-
-		// initialize, encode twice
-		$e1 = new Kohana_EncryptTest_IvStubbed($key, $iv, $mode, $cipher);
-		$e2 = new Kohana_EncryptTest_KeyNormalized($key, $iv, $mode, $cipher);
-
-		$txt_encoded_1 = $e1->encode($txt_plain);
-		$txt_encoded_2 = $e2->encode($txt_plain);
-
-		// assert
-		$this->assertSame($txt_encoded_1, $txt_encoded_2);
-	}
-
-	/**
+	 * @covers Encrypt::instance
 	 */
 	public function test_instance_throw_exception_when_no_key_provided()
 	{
@@ -595,7 +378,7 @@ class Kohana_EncryptTest extends Unittest_TestCase
 	/**
 	 * Provider for test_instance_returns_singleton
 	 *
-	 * @return array of $instance_name, $missing_config
+	 * @return array of $instance_name, $config_array
 	 */
 	public function provider_instance_returns_singleton()
 	{
@@ -603,71 +386,54 @@ class Kohana_EncryptTest extends Unittest_TestCase
 			array(
 				'default',
 				array(
-					'key' => 'trwQwVXX96TIJoKxyBHB9AJkwAOHixuV1ENZmIWyanI0j1zNgSVvqywy044Agaj',
+					'key' => self::KEY,
 				)
 			),
 			array(
-				'blowfish',
+				'legacy_cbc',
 				array(
-					'key' => '7bZJJkmNrelj5NaKoY6h6rMSRSmeUlJuTeOd5HHka5XknyMX4uGSfeVolTz4IYy',
-					'cipher' => MCRYPT_BLOWFISH,
-					'mode' => MCRYPT_MODE_ECB,
-				)
-			),
-			array(
-				'tripledes',
-				array(
-					'key' => 'a9hcSLRvA3LkFc7EJgxXIKQuz1ec91J7P6WNq1IaxMZp4CTj5m31gZLARLxI1jD',
-					'cipher' => MCRYPT_3DES,
-					'mode' => MCRYPT_MODE_CBC,
+					'key'    => '7bZJJkmNrelj5NaKoY6h6rMSRSmeUlJuTeOd5HHka5XknyMX4uGSfeVolTz4IYy',
+					'cipher' => 'rijndael-128',
+					'mode'   => 'cbc',
+					'legacy' => TRUE,
 				)
 			),
 		);
 	}
 
 	/**
-	 * Test to multiple calls to the instance() method returns same instance
-	 * also test if the instances are appropriately configured.
+	 * Multiple calls to instance() return the same, configured instance.
 	 *
 	 * @param string $instance_name instance name
 	 * @param array $config_array array of config variables missing from config
 	 *
 	 * @dataProvider provider_instance_returns_singleton
+	 * @covers Encrypt::instance
 	 */
 	public function test_instance_returns_singleton($instance_name, array $config_array)
 	{
-		// load config
 		$config = Kohana::$config->load('encrypt');
-		// if instance name is NULL the config group should be the default
+
 		$config_group = $instance_name ? : Encrypt::$default;
-		// if config group does not exists, create
-		if (!array_key_exists($config_group, $config))
+
+		if ( ! isset($config[$config_group]))
 		{
 			$config[$config_group] = array();
 		}
-		// fill in the missing config variables
-		$config[$config_group] = $config[$config_group] + $config_array;
 
-		// call instance twice
+		$config[$config_group] = $config_array + $config[$config_group];
+
 		$e = Encrypt::instance($instance_name);
 		$e2 = Encrypt::instance($instance_name);
 
-		// assert instances
 		$this->assertInstanceOf('Encrypt', $e);
-		$this->assertInstanceOf('Encrypt', $e2);
 		$this->assertSame($e, $e2);
 
-		// test if instances are well configured
-		// prepare expected variables
-		$expected_cipher = $config[$config_group]['cipher'];
-		$expected_mode = $config[$config_group]['mode'];
-		$expected_key_size = mcrypt_get_key_size($expected_cipher, $expected_mode);
-		$expected_key = substr($config[$config_group]['key'], 0, $expected_key_size);
+		$this->assertSameProtectedProperty($config_array['key'], $e, '_key');
+		$this->assertSameProtectedProperty(Arr::get($config_array, 'legacy', FALSE), $e, '_legacy');
+		$this->assertSame('test', $e->decode($e->encode('test')));
 
-		// assert
-		$this->assertSameProtectedProperty($expected_key, $e, '_key');
-		$this->assertSameProtectedProperty($expected_cipher, $e, '_cipher');
-		$this->assertSameProtectedProperty($expected_mode, $e, '_mode');
+		unset(Encrypt::$instances[$config_group], $config[$config_group]);
 	}
 
 	/**
@@ -679,69 +445,9 @@ class Kohana_EncryptTest extends Unittest_TestCase
 	 */
 	protected function assertSameProtectedProperty($expect, $object, $name)
 	{
-		$refl = new ReflectionClass($object);
-		$property = $refl->getProperty($name);
+		$property = new ReflectionProperty($object, $name);
+
 		$this->assertSame($expect, $property->getValue($object));
 	}
 
 }
-
-/**
- * Class Kohana_EncryptTest_IvStubbed wraps the Encrypt class to mock out
- * the actual mcrypt_create_iv calls for unit testing.
- */
-class Kohana_EncryptTest_IvStubbed extends Encrypt
-{
-
-	/**
-	 * override constructor to force class use known IVs
-	 *
-	 * @param   string  $key    encryption key
-	 * @param   string  $iv     feed a known IV
-	 * @param   string  $mode   mcrypt mode
-	 * @param   string  $cipher mcrypt cipher
-	 */
-	public function __construct($key, $iv, $mode, $cipher)
-	{
-		parent::__construct($key, $mode, $cipher);
-
-		$this->_iv = $iv;
-	}
-
-	/**
-	 * Fake a random initialization vector by returning a known one
-	 *
-	 * @return string a known IV
-	 */
-	protected function _create_iv()
-	{
-		return isset($this->_iv) ? $this->_iv : FALSE;
-	}
-
-}
-
-/**
- * Class Kohana_EncryptTest_KeyNormalized wraps the Encrypt class to mock out
- * the actual mcrypt_create_iv calls for unit testing, as well as to always
- * normalize keys
- */
-class Kohana_EncryptTest_KeyNormalized extends Kohana_EncryptTest_IvStubbed
-{
-
-	/**
-	 * override constructor to force key normalization
-	 *
-	 * @param   string  $key    encryption key
-	 * @param   string  $mode   mcrypt mode
-	 * @param   string  $cipher mcrypt cipher
-	 */
-	public function __construct($key, $iv, $mode, $cipher)
-	{
-		parent::__construct($key, $iv, $mode, $cipher);
-
-		$this->_key = $this->_normalize_key($this->_key, $this->_cipher, $this->_mode);
-	}
-
-
-}
-

@@ -1,21 +1,26 @@
 <?php defined('SYSPATH') OR die('No direct script access.');
+
+// Configurations written for the mcrypt version of this class use these.
+defined('MCRYPT_RIJNDAEL_128') OR define('MCRYPT_RIJNDAEL_128', 'rijndael-128');
+defined('MCRYPT_MODE_CBC') OR define('MCRYPT_MODE_CBC', 'cbc');
+defined('MCRYPT_MODE_CFB') OR define('MCRYPT_MODE_CFB', 'cfb');
+defined('MCRYPT_MODE_ECB') OR define('MCRYPT_MODE_ECB', 'ecb');
+defined('MCRYPT_MODE_NOFB') OR define('MCRYPT_MODE_NOFB', 'nofb');
+defined('MCRYPT_MODE_NCFB') OR define('MCRYPT_MODE_NCFB', 'ncfb');
+
 /**
- * The Encrypt library provides two-way encryption of text and binary strings
- * using the [Mcrypt](http://php.net/mcrypt) extension, which consists of three
- * parts: the key, the cipher, and the mode.
+ * The Encrypt library provides authenticated two-way encryption of text and
+ * binary strings with OpenSSL.
  *
- * The Key
- * :  A secret passphrase that is used for encoding and decoding
+ * [Encrypt::encode] uses AES-256-CBC with a random IV, then signs the IV and
+ * ciphertext with HMAC-SHA256 (encrypt-then-MAC). [Encrypt::decode] returns
+ * FALSE for any value that was changed. Both sub-keys come from the configured
+ * key through HKDF, so the key must be a long random secret.
  *
- * The Cipher
- * :  A [cipher](http://php.net/mcrypt.ciphers) determines how the encryption
- *    is mathematically calculated. By default, the "rijndael-128" cipher
- *    is used. This is commonly known as "AES-128" and is an industry standard.
- *
- * The Mode
- * :  The [mode](http://php.net/mcrypt.constants) determines how the encrypted
- *    data is written in binary form. By default, the "nofb" mode is used,
- *    which produces short output with high entropy.
+ * The mcrypt version of this class had no MAC. To read values that it wrote,
+ * set "legacy" => TRUE in the configuration group, together with the old
+ * "cipher" and "mode". Only the rijndael-128 cipher is supported. Disable it
+ * again after the migration: legacy values are not authenticated.
  *
  * @package    Kohana
  * @category   Security
@@ -24,6 +29,17 @@
  * @license    http://kohanaframework.org/license
  */
 class Kohana_Encrypt {
+
+	/**
+	 * Prefix of values from [Encrypt::encode]
+	 */
+	const PREFIX = 'v2:';
+
+	const CIPHER = 'aes-256-cbc';
+
+	const IV_SIZE = 16;
+
+	const MAC_SIZE = 32;
 
 	/**
 	 * @var  string  default instance name
@@ -36,33 +52,35 @@ class Kohana_Encrypt {
 	public static $instances = array();
 
 	/**
-	 * @var  string  RAND type to use
-	 *
-	 * Only MCRYPT_DEV_URANDOM and MCRYPT_DEV_RANDOM are considered safe.
-	 * Using MCRYPT_RAND will silently revert to MCRYPT_DEV_URANDOM
+	 * @var  string  encryption sub-key
 	 */
-	protected static $_rand = MCRYPT_DEV_URANDOM;
+	protected $_encryption_key;
 
 	/**
-	 * @var string Encryption key
+	 * @var  string  authentication sub-key
+	 */
+	protected $_mac_key;
+
+	/**
+	 * @var  string  configured key, used only for legacy values
 	 */
 	protected $_key;
 
 	/**
-	 * @var string mcrypt mode
+	 * @var  string  mcrypt mode, used only for legacy values
 	 */
 	protected $_mode;
 
 	/**
-	 * @var string mcrypt cipher
+	 * @var  string  mcrypt cipher, used only for legacy values
 	 */
 	protected $_cipher;
 
 	/**
-	 * @var int the size of the Initialization Vector (IV) in bytes
+	 * @var  boolean  decode values from the mcrypt version of this class
 	 */
-	protected $_iv_size;
-	
+	protected $_legacy = FALSE;
+
 	/**
 	 * Returns a singleton instance of Encrypt. An encryption key must be
 	 * provided in your "encrypt" configuration file.
@@ -85,171 +103,192 @@ class Kohana_Encrypt {
 			// Load the configuration data
 			$config = Kohana::$config->load('encrypt')->$name;
 
-			if ( ! isset($config['key']))
+			if ( ! isset($config['key']) OR (string) $config['key'] === '')
 			{
 				// No default encryption key is provided!
 				throw new Kohana_Exception('No encryption key is defined in the encryption configuration group: :group',
 					array(':group' => $name));
 			}
 
-			if ( ! isset($config['mode']))
-			{
-				// Add the default mode
-				$config['mode'] = MCRYPT_MODE_NOFB;
-			}
-
-			if ( ! isset($config['cipher']))
-			{
-				// Add the default cipher
-				$config['cipher'] = MCRYPT_RIJNDAEL_128;
-			}
+			$config += array(
+				'mode'   => MCRYPT_MODE_NOFB,
+				'cipher' => MCRYPT_RIJNDAEL_128,
+				'legacy' => FALSE,
+			);
 
 			// Create a new instance
-			Encrypt::$instances[$name] = new Encrypt($config['key'], $config['mode'], $config['cipher']);
+			Encrypt::$instances[$name] = new Encrypt($config['key'], $config['mode'], $config['cipher'], $config['legacy']);
 		}
 
 		return Encrypt::$instances[$name];
 	}
 
 	/**
-	 * Creates a new mcrypt wrapper.
+	 * Creates a new encrypt object.
 	 *
-	 * @param   string  $key    encryption key
-	 * @param   string  $mode   mcrypt mode
-	 * @param   string  $cipher mcrypt cipher
+	 * @param   string   $key     encryption key
+	 * @param   string   $mode    mcrypt mode of legacy values
+	 * @param   string   $cipher  mcrypt cipher of legacy values
+	 * @param   boolean  $legacy  decode values from the mcrypt version of this class
+	 * @throws  Kohana_Exception
 	 */
-	public function __construct($key, $mode, $cipher)
+	public function __construct($key, $mode = MCRYPT_MODE_NOFB, $cipher = MCRYPT_RIJNDAEL_128, $legacy = FALSE)
 	{
-		// Find the max length of the key, based on cipher and mode
-		$size = mcrypt_get_key_size($cipher, $mode);
+		$key = (string) $key;
 
-		if (isset($key[$size]))
-		{
-			// Shorten the key to the maximum size
-			$key = substr($key, 0, $size);
-		}
-		else if (version_compare(PHP_VERSION, '5.6.0', '>='))
-		{
-			$key = $this->_normalize_key($key, $cipher, $mode);
-		}
+		if ($key === '')
+			throw new Kohana_Exception('The encryption key must not be empty');
 
-		// Store the key, mode, and cipher
+		$this->_encryption_key = hash_hkdf('sha256', $key, 32, 'kohana-encrypt-aes-256-cbc');
+		$this->_mac_key        = hash_hkdf('sha256', $key, 32, 'kohana-encrypt-hmac-sha256');
+
 		$this->_key    = $key;
 		$this->_mode   = $mode;
 		$this->_cipher = $cipher;
-
-		// Store the IV size
-		$this->_iv_size = mcrypt_get_iv_size($this->_cipher, $this->_mode);
+		$this->_legacy = (bool) $legacy;
 	}
 
 	/**
-	 * Encrypts a string and returns an encrypted string that can be decoded.
+	 * Encrypts and signs a string. The result is a printable string, safe
+	 * for cookies and URLs once URL encoded.
 	 *
 	 *     $data = $encrypt->encode($data);
 	 *
-	 * The encrypted binary data is encoded using [base64](http://php.net/base64_encode)
-	 * to convert it to a string. This string can be stored in a database,
-	 * displayed, and passed using most other means without corruption.
-	 *
 	 * @param   string  $data   data to be encrypted
 	 * @return  string
+	 * @throws  Kohana_Exception
 	 */
 	public function encode($data)
 	{
-		// Get an initialization vector
 		$iv = $this->_create_iv();
 
-		// Encrypt the data using the configured options and generated iv
-		$data = mcrypt_encrypt($this->_cipher, $this->_key, $data, $this->_mode, $iv);
+		$encrypted = openssl_encrypt((string) $data, Encrypt::CIPHER, $this->_encryption_key, OPENSSL_RAW_DATA, $iv);
 
-		// Use base64 encoding to convert to a string
-		return base64_encode($iv.$data);
+		if ($encrypted === FALSE)
+			throw new Kohana_Exception('Could not encrypt the data');
+
+		$mac = hash_hmac('sha256', Encrypt::PREFIX.$iv.$encrypted, $this->_mac_key, TRUE);
+
+		return Encrypt::PREFIX.base64_encode($iv.$encrypted.$mac);
 	}
 
 	/**
-	 * Decrypts an encoded string back to its original value.
+	 * Verifies and decrypts a string from [Encrypt::encode].
 	 *
 	 *     $data = $encrypt->decode($data);
 	 *
 	 * @param   string  $data   encoded string to be decrypted
-	 * @return  FALSE   if decryption fails
-	 * @return  string
+	 * @return  string|FALSE    FALSE if the value is not valid or was changed
 	 */
 	public function decode($data)
 	{
-		// Convert the data back to binary
+		if ( ! is_string($data))
+			return FALSE;
+
+		if (strncmp($data, Encrypt::PREFIX, strlen(Encrypt::PREFIX)) !== 0)
+			return $this->_legacy ? $this->_decode_legacy($data) : FALSE;
+
+		$raw = base64_decode(substr($data, strlen(Encrypt::PREFIX)), TRUE);
+
+		// The ciphertext has at least one block
+		if ($raw === FALSE OR strlen($raw) < Encrypt::IV_SIZE + 16 + Encrypt::MAC_SIZE)
+			return FALSE;
+
+		$iv        = substr($raw, 0, Encrypt::IV_SIZE);
+		$encrypted = substr($raw, Encrypt::IV_SIZE, -Encrypt::MAC_SIZE);
+		$mac       = substr($raw, -Encrypt::MAC_SIZE);
+
+		$expected = hash_hmac('sha256', Encrypt::PREFIX.$iv.$encrypted, $this->_mac_key, TRUE);
+
+		if ( ! hash_equals($expected, $mac))
+			return FALSE;
+
+		return openssl_decrypt($encrypted, Encrypt::CIPHER, $this->_encryption_key, OPENSSL_RAW_DATA, $iv);
+	}
+
+	/**
+	 * Decrypts a value from the mcrypt version of this class with OpenSSL.
+	 * These values have no MAC, so an attacker can change them.
+	 *
+	 * @param   string  $data   base64 of IV and ciphertext
+	 * @return  string|FALSE
+	 */
+	protected function _decode_legacy($data)
+	{
+		if ($this->_cipher !== MCRYPT_RIJNDAEL_128)
+			return FALSE;
+
+		$modes = array(
+			MCRYPT_MODE_NOFB => array('ofb', TRUE),
+			MCRYPT_MODE_CBC  => array('cbc', TRUE),
+			MCRYPT_MODE_NCFB => array('cfb', TRUE),
+			MCRYPT_MODE_CFB  => array('cfb8', TRUE),
+			MCRYPT_MODE_ECB  => array('ecb', FALSE),
+		);
+
+		if ( ! isset($modes[$this->_mode]))
+			return FALSE;
+
+		list($mode, $has_iv) = $modes[$this->_mode];
+
 		$data = base64_decode($data, TRUE);
 
 		if ( ! $data)
-		{
-			// Invalid base64 data
 			return FALSE;
+
+		$iv = '';
+
+		if ($has_iv)
+		{
+			if (strlen($data) < 16)
+				return FALSE;
+
+			$iv   = substr($data, 0, 16);
+			$data = substr($data, 16);
+		}
+		elseif (strlen($data) >= 16)
+		{
+			// mcrypt wrote an unused IV in ECB mode too
+			$data = substr($data, 16);
 		}
 
-		// Extract the initialization vector from the data
-		$iv = substr($data, 0, $this->_iv_size);
+		$key = $this->_legacy_key($this->_key);
+		$cipher = 'aes-'.(strlen($key) * 8).'-'.$mode;
 
-		if ($this->_iv_size !== strlen($iv))
-		{
-			// The iv is not the expected size
+		$plain = openssl_decrypt($data, $cipher, $key, OPENSSL_RAW_DATA | OPENSSL_ZERO_PADDING, $iv);
+
+		if ($plain === FALSE)
 			return FALSE;
-		}
 
-		// Remove the iv from the data
-		$data = substr($data, $this->_iv_size);
-
-		// Return the decrypted data, trimming the \0 padding bytes from the end of the data
-		return rtrim(mcrypt_decrypt($this->_cipher, $this->_key, $data, $this->_mode, $iv), "\0");
+		// mcrypt padded with \0 bytes
+		return rtrim($plain, "\0");
 	}
 
 	/**
-	 * Proxy for the mcrypt_create_iv function - to allow mocking and testing against KAT vectors
+	 * Pads or cuts a key as mcrypt did for rijndael-128 (16, 24 or 32 bytes).
 	 *
-	 * @return string the initialization vector or FALSE on error
+	 * @param   string  $key
+	 * @return  string
+	 */
+	protected function _legacy_key($key)
+	{
+		foreach (array(16, 24, 32) as $size)
+		{
+			if (strlen($key) <= $size)
+				return str_pad($key, $size, "\0");
+		}
+
+		return substr($key, 0, 32);
+	}
+
+	/**
+	 * Returns a random initialization vector.
+	 *
+	 * @return  string
 	 */
 	protected function _create_iv()
 	{
-		/*
-		 * Silently use MCRYPT_DEV_URANDOM when the chosen random number generator
-		 * is not one of those that are considered secure.
-		 *
-		 * Also sets Encrypt::$_rand to MCRYPT_DEV_URANDOM when it's not already set
-		 */
-		if ((Encrypt::$_rand !== MCRYPT_DEV_URANDOM) AND ( Encrypt::$_rand !== MCRYPT_DEV_RANDOM))
-		{
-			Encrypt::$_rand = MCRYPT_DEV_URANDOM;
-		}
-
-		// Create a random initialization vector of the proper size for the current cipher
-		return mcrypt_create_iv($this->_iv_size, Encrypt::$_rand);
-	}
-
-	/**
-	 * Normalize key for PHP 5.6 for backwards compatibility
-	 *
-	 * This method is a shim to make PHP 5.6 behave in a B/C way for
-	 * legacy key padding when shorter-than-supported keys are used
-	 *
-	 * @param   string  $key    encryption key
-	 * @param   string  $cipher mcrypt cipher
-	 * @param   string  $mode   mcrypt mode
-	 */
-	protected function _normalize_key($key, $cipher, $mode)
-	{
-		// open the cipher
-		$td = mcrypt_module_open($cipher, '', $mode, '');
-
-		// loop through the supported key sizes
-		foreach (mcrypt_enc_get_supported_key_sizes($td) as $supported) {
-			// if key is short, needs padding
-			if (strlen($key) <= $supported)
-			{
-				return str_pad($key, $supported, "\0");
-			}
-		}
-
-		// at this point key must be greater than max supported size, shorten it
-		return substr($key, 0, mcrypt_get_key_size($cipher, $mode));
+		return random_bytes(Encrypt::IV_SIZE);
 	}
 
 }
