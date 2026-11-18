@@ -11,6 +11,21 @@
 abstract class Kohana_Database_Query_Builder extends Database_Query {
 
 	/**
+	 * @var  array  operators that where(), having() and on() accept, in upper
+	 *              case. The operator goes into the SQL unquoted. Add the
+	 *              operators of your database here, or pass a Database_Expression.
+	 */
+	public static $operators = array(
+		'=', '==', '!=', '<>', '<', '>', '<=', '>=', '<=>',
+		'LIKE', 'NOT LIKE', 'LIKE BINARY', 'ILIKE', 'NOT ILIKE',
+		'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN', 'IS', 'IS NOT',
+		'IS DISTINCT FROM', 'IS NOT DISTINCT FROM', 'EXISTS', 'NOT EXISTS',
+		'REGEXP', 'NOT REGEXP', 'REGEXP BINARY', 'RLIKE', 'NOT RLIKE', 'SOUNDS LIKE',
+		'GLOB', 'NOT GLOB', 'MATCH', 'SIMILAR TO', 'NOT SIMILAR TO',
+		'~', '~*', '!~', '!~*', '@@', '@>', '<@', '&&', '&', '|', '^',
+	);
+
+	/**
 	 * Compiles an array of JOIN statements into an SQL partial.
 	 *
 	 * @param   object  $db     Database instance
@@ -87,10 +102,9 @@ abstract class Kohana_Database_Query_Builder extends Database_Query {
 						}
 					}
 
-					// Database operators are always uppercase
-					$op = strtoupper($op);
+					$op = $this->_compile_operator($db, $op);
 
-					if ($op === 'BETWEEN' AND is_array($value))
+					if (($op === 'BETWEEN' OR $op === 'NOT BETWEEN') AND is_array($value))
 					{
 						// BETWEEN always has exactly two arguments
 						list($min, $max) = $value;
@@ -230,6 +244,40 @@ abstract class Kohana_Database_Query_Builder extends Database_Query {
 		}
 
 		return 'ORDER BY '.implode(', ', $sort);
+	}
+
+	/**
+	 * Compiles a where(), having() or on() operator. See
+	 * [Database_Query_Builder::$operators] for the valid operators. A
+	 * comparison operator can have ANY, ALL or SOME after it.
+	 *
+	 * @param   object  $db  Database instance
+	 * @param   mixed   $op  operator string or Database_Expression
+	 * @return  string  upper case operator, or "" for an empty operator
+	 * @throws  Database_Exception
+	 */
+	protected function _compile_operator(Database $db, $op)
+	{
+		if ($op instanceof Database_Expression)
+			return $op->compile($db);
+
+		if ($op === NULL OR $op === '')
+			return '';
+
+		if (is_string($op))
+		{
+			$op = strtoupper(trim(preg_replace('/\s+/', ' ', $op)));
+
+			if (in_array($op, array_map('strtoupper', Database_Query_Builder::$operators), TRUE)
+				OR preg_match('/^(?:=|!=|<>|<|>|<=|>=) (?:ANY|ALL|SOME)$/D', $op))
+			{
+				return $op;
+			}
+		}
+
+		throw new Database_Exception('Invalid SQL operator :op', array(
+			':op' => is_string($op) ? '"'.$op.'"' : gettype($op),
+		));
 	}
 
 	/**

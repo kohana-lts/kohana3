@@ -198,6 +198,37 @@ abstract class Kohana_Database_DriverTestCase extends Unittest_TestCase {
 		DB::select('name')->from('kt_items')->order_by('id', 'desc,(SELECT 1)')->execute($this->db);
 	}
 
+	public function test_operators_and_joins_run_on_the_database()
+	{
+		$this->insert_items(array('a', 'bb', 'ccc', 'dddd'));
+
+		$names = function ($query, $order = 'id')
+		{
+			return $query->order_by($order, 'ASC')->execute($this->db)->as_array(NULL, 'name');
+		};
+
+		$this->assertSame(array('bb', 'ccc'), $names(DB::select('name')->from('kt_items')->where('score', 'between', array(2, 3))));
+		$this->assertSame(array('a', 'dddd'), $names(DB::select('name')->from('kt_items')->where('score', 'NOT BETWEEN', array(2, 3))));
+		$this->assertSame(array('a', 'dddd'), $names(DB::select('name')->from('kt_items')->where('name', 'not in', array('bb', 'ccc'))));
+		$this->assertSame(array('ccc'), $names(DB::select('name')->from('kt_items')->where('name', 'LIKE', 'c%')));
+		$this->assertSame(array('a', 'bb', 'dddd'), $names(DB::select('name')->from('kt_items')->where('name', 'NOT LIKE', 'c%')));
+		$this->assertSame(array('a', 'bb', 'ccc', 'dddd'), $names(DB::select('name')->from('kt_items')->where('name', 'IS NOT', NULL)));
+		$this->assertSame(array('a'), $names(DB::select('name')->from('kt_items')->where('score', '<>', 2)->where('score', '<', 3)));
+
+		$exists = DB::select('name')->from(array('kt_items', 'i'))
+			->where(NULL, 'EXISTS', DB::select('id')->from(array('kt_items', 'j'))->where('j.score', '>', DB::expr($this->db->quote_column('i.score'))));
+		$this->assertSame(array('a', 'bb', 'ccc'), $names($exists));
+
+		$joined = DB::select('i.name')->from(array('kt_items', 'i'))
+			->join(array('kt_items', 'j'), 'left outer')->on('j.score', '>', 'i.id')
+			->where('j.id', 'IS', NULL);
+		$this->assertSame(array('dddd'), $names($joined, 'i.id'));
+
+		$this->expectException(Database_Exception::class);
+
+		DB::select('name')->from('kt_items')->where('id', '= 1 OR 1=1 --', 1)->execute($this->db);
+	}
+
 	public function test_query_error_throws_database_exception()
 	{
 		$this->expectException(Database_Exception::class);

@@ -10,6 +10,17 @@
  */
 class Kohana_Database_Query_Builder_Join extends Database_Query_Builder {
 
+	/**
+	 * @var  array  JOIN types that the builder accepts, in upper case. The
+	 *              type goes into the SQL unquoted.
+	 */
+	public static $types = array(
+		'INNER', 'CROSS', 'LEFT', 'RIGHT', 'FULL',
+		'LEFT OUTER', 'RIGHT OUTER', 'FULL OUTER',
+		'NATURAL', 'NATURAL INNER', 'NATURAL LEFT', 'NATURAL RIGHT', 'NATURAL FULL',
+		'NATURAL LEFT OUTER', 'NATURAL RIGHT OUTER', 'NATURAL FULL OUTER',
+	);
+
 	// Type of JOIN
 	protected $_type;
 
@@ -98,7 +109,14 @@ class Kohana_Database_Query_Builder_Join extends Database_Query_Builder {
 
 		if ($this->_type)
 		{
-			$sql = strtoupper($this->_type).' JOIN';
+			$type = strtoupper(trim(preg_replace('/\s+/', ' ', $this->_type)));
+
+			if ( ! in_array($type, array_map('strtoupper', Database_Query_Builder_Join::$types), TRUE))
+			{
+				throw new Database_Exception('Invalid JOIN type :type', array(':type' => '"'.$type.'"'));
+			}
+
+			$sql = $type.' JOIN';
 		}
 		else
 		{
@@ -121,10 +139,9 @@ class Kohana_Database_Query_Builder_Join extends Database_Query_Builder {
 				// Split the condition
 				list($c1, $op, $c2) = $condition;
 
-				if ($op)
+				if (($op = $this->_compile_operator($db, $op)) !== '')
 				{
-					// Make the operator uppercase and spaced
-					$op = ' '.strtoupper($op);
+					$op = ' '.$op;
 				}
 
 				// Quote each of the columns used for the condition

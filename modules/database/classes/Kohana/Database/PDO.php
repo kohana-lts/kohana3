@@ -10,7 +10,23 @@
  */
 class Kohana_Database_PDO extends Database {
 
-	// PDO uses no quoting for identifiers
+	/**
+	 * @var  array  identifier quote for each PDO driver name. Other drivers
+	 *              get no quoting, so set 'identifier' in the config for them.
+	 */
+	public static $identifiers = array(
+		'mysql'    => '`',
+		'pgsql'    => '"',
+		'sqlite'   => '"',
+		'sqlite2'  => '"',
+		'oci'      => '"',
+		'firebird' => '"',
+		'ibm'      => '"',
+		'informix' => '"',
+		'sqlsrv'   => '"',
+	);
+
+	// Set from the config or from the DSN driver name
 	protected $_identifier = '';
 
 	public function __construct($name, array $config)
@@ -22,6 +38,27 @@ class Kohana_Database_PDO extends Database {
 			// Allow the identifier to be overloaded per-connection
 			$this->_identifier = (string) $this->_config['identifier'];
 		}
+		else
+		{
+			$driver = $this->_dsn_driver();
+
+			if (isset(Database_PDO::$identifiers[$driver]))
+			{
+				$this->_identifier = Database_PDO::$identifiers[$driver];
+			}
+		}
+	}
+
+	/**
+	 * Returns the driver name from the DSN prefix, for example "mysql".
+	 *
+	 * @return  string  lower case driver name, or "" for a DSN alias
+	 */
+	protected function _dsn_driver()
+	{
+		$dsn = isset($this->_config['connection']['dsn']) ? (string) $this->_config['connection']['dsn'] : '';
+
+		return (strpos($dsn, ':') === FALSE) ? '' : strtolower(substr($dsn, 0, strpos($dsn, ':')));
 	}
 
 	public function connect()
