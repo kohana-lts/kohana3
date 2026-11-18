@@ -22,6 +22,11 @@ class Kohana_UploadTest extends Unittest_TestCase
 	protected $upload_dir;
 
 	/**
+	 * @var  string  temporary upload file
+	 */
+	protected $upload_tmp;
+
+	/**
 	 * Provides test data for test_size()
 	 * 
 	 * @return array
@@ -239,7 +244,7 @@ class Kohana_UploadTest extends Unittest_TestCase
 		$this->upload_dir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'kohana_upload_'.bin2hex(random_bytes(4));
 		mkdir($this->upload_dir);
 
-		$tmp = tempnam(sys_get_temp_dir(), 'kup');
+		$tmp = $this->upload_tmp = tempnam(sys_get_temp_dir(), 'kup');
 		file_put_contents($tmp, 'data');
 
 		return array('name' => $name, 'type' => 'text/plain', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => 4);
@@ -253,6 +258,11 @@ class Kohana_UploadTest extends Unittest_TestCase
 		{
 			array_map('unlink', glob($this->upload_dir.DIRECTORY_SEPARATOR.'*'));
 			rmdir($this->upload_dir);
+		}
+
+		if ( ! empty($this->upload_tmp) AND is_file($this->upload_tmp))
+		{
+			unlink($this->upload_tmp);
 		}
 
 		parent::tearDown();
