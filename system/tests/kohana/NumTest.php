@@ -17,6 +17,9 @@ class Kohana_NumTest extends Unittest_TestCase
 {
 	protected $default_locale;
 
+	// The format tests need the en_US.utf8 locale
+	protected $locale_installed = FALSE;
+
 	/**
 	 * SetUp test enviroment
 	 */
@@ -27,7 +30,7 @@ class Kohana_NumTest extends Unittest_TestCase
 		parent::setUp();
 
 		$this->default_locale = setlocale(LC_ALL, 0);
-		setlocale(LC_ALL, 'en_US.utf8');
+		$this->locale_installed = (setlocale(LC_ALL, 'en_US.utf8', 'en_US.UTF-8', 'en_US') !== FALSE);
 	}
 
 	/**
@@ -127,6 +130,11 @@ class Kohana_NumTest extends Unittest_TestCase
 	 */
 	public function test_format($number, $places, $monetary, $expected)
 	{
+		if ( ! $this->locale_installed)
+		{
+			$this->markTestSkipped('The en_US.utf8 locale is not installed');
+		}
+
 		$this->assertSame($expected, Num::format($number, $places, $monetary));
 	}
 
