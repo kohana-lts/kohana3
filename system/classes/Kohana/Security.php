@@ -102,10 +102,9 @@ class Kohana_Security {
 
 
 	/**
-	 * Deprecated for security reasons.
-	 * See https://github.com/kohana/kohana/issues/107
-	 *
-	 * Remove image tags from a string.
+	 * Replace each `<img>` and `<image>` tag with its escaped `src` value.
+	 * This is not an HTML sanitizer: other tags stay. Use HTML Purifier for
+	 * untrusted HTML. See https://github.com/kohana/kohana/issues/107
 	 *
 	 *     $str = Security::strip_image_tags($str);
 	 *
@@ -115,7 +114,33 @@ class Kohana_Security {
 	 */
 	public static function strip_image_tags($str)
 	{
-		return preg_replace('#<img\s.*?(?:src\s*=\s*["\']?([^"\'<>\s]*)["\']?[^>]*)?>#is', '$1', $str);
+		$str = (string) $str;
+
+		// Repeat until stable, because a removal can join the parts of a new tag
+		do
+		{
+			$result = preg_replace_callback('#<(?:img|image)\b([^>]*)>?#i', function ($tag)
+			{
+				if (preg_match('#(?:^|[\s/])src\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'>]+))#i', $tag[1], $src))
+				{
+					// The source never contains "<" after escaping
+					return HTML::chars(implode('', array_slice($src, 1)), FALSE);
+				}
+
+				return '';
+			}, $str, -1, $count);
+
+			if ($result === NULL)
+			{
+				// Fail closed on a PCRE error
+				return '';
+			}
+
+			$str = $result;
+		}
+		while ($count > 0);
+
+		return $str;
 	}
 
 	/**

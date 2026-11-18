@@ -45,6 +45,11 @@ class Kohana_SecurityTest extends Unittest_TestCase
 	{
 		return array(
 			array('foo', '<img src="foo" />'),
+			array('foo', "<IMG SRC='foo'>"),
+			array('foo', '<img alt="x" src=foo>'),
+			array('text  more', 'text <img data-src="x"> more'),
+			array('a&amp;b', '<img src="a&amp;b">'),
+			array('a&quot;b', '<img src=\'a"b\'>'),
 		);
 	}
 
@@ -58,6 +63,44 @@ class Kohana_SecurityTest extends Unittest_TestCase
 	public function test_strip_image_tags($expected, $input)
 	{
 		$this->assertSame($expected, Security::strip_image_tags($input));
+	}
+
+	/**
+	 * Payloads from https://github.com/kohana/kohana/issues/107 and parser tricks.
+	 *
+	 * @return array
+	 */
+	public function provider_strip_image_tags_xss()
+	{
+		return array(
+			array('<img/src=x onerror=prompt(document.domain)>'),
+			array('<img/onerror=alert(1) src=x>'),
+			array("<IMG\tSRC=x\tonerror=alert(1)>"),
+			array("<img\nsrc=x\nonerror=alert(1)>"),
+			array('<img src=x onerror=alert(1)//'),
+			array('<img'),
+			array('<image src=x onerror=alert(1)>'),
+			array('<im<img>g src=x onerror=alert(1)>'),
+			array('<<img src="img src=x onerror=alert(1)//">>'),
+			array('<img alt=">" src=x onerror=alert(1)>'),
+			array('<img src="x" onerror="alert(1)">'),
+			array("<img src='x'onerror=alert(1)>"),
+		);
+	}
+
+	/**
+	 * @test
+	 * @dataProvider provider_strip_image_tags_xss
+	 * @covers Security::strip_image_tags
+	 */
+	public function test_strip_image_tags_removes_every_image_tag($input)
+	{
+		$output = Security::strip_image_tags($input);
+
+		$this->assertIsString($output);
+		$this->assertDoesNotMatchRegularExpression('/<\s*im(?:g|age)\b/i', $output);
+		$this->assertDoesNotMatchRegularExpression('/<[a-z][^>]*\bonerror/i', $output);
+		$this->assertSame($output, Security::strip_image_tags($output), 'The output is a fixpoint');
 	}
 
 	/**
