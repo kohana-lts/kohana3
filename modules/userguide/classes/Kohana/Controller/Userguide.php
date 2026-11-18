@@ -237,7 +237,13 @@ abstract class Kohana_Controller_Userguide extends Controller_Template {
 	public function action_media()
 	{
 		// Get the file path from the request
-		$file = $this->request->param('file');
+		$file = (string) $this->request->param('file');
+
+		if ( ! Controller_Userguide::safe_path($file))
+		{
+			$this->response->status(404);
+			return;
+		}
 
 		// Find the file extension
 		$ext = pathinfo($file, PATHINFO_EXTENSION);
@@ -313,6 +319,8 @@ abstract class Kohana_Controller_Userguide extends Controller_Template {
 	 */
 	public function file($page)
 	{
+		if ( ! Controller_Userguide::safe_path((string) $page))
+			return FALSE;
 
 		// Strip optional .md or .markdown suffix from the passed filename
 		$info = pathinfo($page);
@@ -322,6 +330,28 @@ abstract class Kohana_Controller_Userguide extends Controller_Template {
 			$page = $info['dirname'].DIRECTORY_SEPARATOR.$info['filename'];
 		}
 		return Kohana::find_file('guide', $page, 'md');
+	}
+
+	/**
+	 * Checks a file path from the URL before Kohana::find_file() uses it.
+	 * Only relative paths of [A-Za-z0-9_.-] segments, with no "." or ".."
+	 * segment, are safe.
+	 *
+	 * @param   string  $path
+	 * @return  boolean
+	 */
+	public static function safe_path($path)
+	{
+		if ( ! preg_match('#^[A-Za-z0-9_.\-]+(?:/[A-Za-z0-9_.\-]+)*/?$#D', $path))
+			return FALSE;
+
+		foreach (explode('/', rtrim($path, '/')) as $segment)
+		{
+			if ($segment === '.' OR $segment === '..')
+				return FALSE;
+		}
+
+		return TRUE;
 	}
 
 	public function section($page)
