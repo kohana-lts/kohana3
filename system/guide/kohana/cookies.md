@@ -94,7 +94,16 @@ To only allow the cookie to be accessed over a secure (HTTPS) connection, use th
     // Allow cookies to be accessed on any connection
     Cookie::$secure = FALSE;
 
-To prevent cookies from being accessed using Javascript, you can change the [Cookie::$httponly] setting.
+[Cookie::$httponly] is TRUE by default, so Javascript cannot read the cookies. To let Javascript read them, change the setting.
 
-    // Make cookies inaccessible to Javascript
-    Cookie::$httponly = TRUE;
+    // Make cookies accessible to Javascript
+    Cookie::$httponly = FALSE;
+
+[Cookie::$samesite] is 'Lax' by default. Browsers then do not send the cookies with cross-site POST requests. A payment callback or a single sign-on return that posts back to your site needs 'None', which needs a secure connection.
+
+    // Send cookies with cross-site requests
+    Cookie::$samesite = 'None';
+    Cookie::$secure = TRUE;
+
+    // Send no SameSite attribute
+    Cookie::$samesite = NULL;
