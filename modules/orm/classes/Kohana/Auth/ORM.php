@@ -80,15 +80,22 @@ class Kohana_Auth_ORM extends Auth {
 			$user->where($user->unique_key($username), '=', $username)->find();
 		}
 
-		if (is_string($password))
-		{
-			// Create a hashed password
-			$password = $this->hash($password);
-		}
-
 		// If the passwords match, perform a login
-		if ($user->has('roles', ORM::factory('Role', array('name' => 'login'))) AND $user->password === $password)
+		if ($user->loaded() AND $this->verify($password, (string) $user->password)
+			AND $user->has('roles', ORM::factory('Role', array('name' => 'login'))))
 		{
+			if ($this->needs_rehash($user->password))
+			{
+				// The model filter hashes the password; complete_login() saves it
+				$user->password = $password;
+
+				if ( ! $this->verify($password, (string) $user->password))
+				{
+					// The model has no password filter
+					$user->password = $this->hash($password);
+				}
+			}
+
 			if ($remember === TRUE)
 			{
 				// Token data
@@ -277,7 +284,7 @@ class Kohana_Auth_ORM extends Auth {
 	}
 
 	/**
-	 * Compare password with original (hashed). Works for current (logged in) user
+	 * Compare a plain text password with the stored hash. Works for current (logged in) user
 	 *
 	 * @param   string  $password
 	 * @return  boolean
@@ -289,7 +296,7 @@ class Kohana_Auth_ORM extends Auth {
 		if ( ! $user)
 			return FALSE;
 
-		return ($this->hash($password) === $user->password);
+		return $this->verify($password, (string) $user->password);
 	}
 
 } // End Auth ORM

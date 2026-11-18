@@ -3,6 +3,12 @@
 return array(
 
 	'driver'       => 'File',
+
+	// Algorithm and options for password_hash(). FALSE uses the legacy HMAC hash.
+	'password_algo'    => PASSWORD_DEFAULT,
+	'password_options' => array(),
+
+	// Only to verify legacy HMAC hashes, which login replaces (Auth_ORM)
 	'hash_method'  => 'sha256',
 	'hash_key'     => NULL,
 	'lifetime'     => 1209600,
@@ -11,7 +17,8 @@ return array(
 
 	// Username/password combinations for the Auth File driver
 	'users' => array(
-		// 'admin' => 'b3154acf3a344170077d11bdb5fff31532f679a1919e716a02',
+		// 'admin' => Auth::instance()->hash('password') output, for example
+		// '$2y$12$...',
 	),
 
 );

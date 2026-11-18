@@ -7,7 +7,11 @@ The default configuration file is located in `MODPATH/auth/config/auth.php`. You
 Name | Type | Default | Description
 -----|------|---------|------------
 driver | `string` | file | The name of the auth driver to use.
-hash_method | `string` | sha256 | The hashing function to use on the passwords.
-hash_key | `string` | NULL | The key to use when hashing the password.
+password_algo | `mixed` | PASSWORD_DEFAULT | The algorithm for `password_hash()`. `FALSE` uses the legacy HMAC hash.
+password_options | `array` | array() | The options for `password_hash()`, for example `array('cost' => 12)`.
+hash_method | `string` | sha256 | The HMAC function of legacy password hashes.
+hash_key | `string` | NULL | The HMAC key of legacy password hashes. Without it, legacy hashes do not verify.
+
+New passwords get a `password_hash()` hash. A login with a legacy HMAC hash still works when `hash_key` is set. The ORM driver then saves a new hash. The file driver cannot save, so replace legacy hashes in its `users` list with `Auth::instance()->hash($password)` values.
 session_type | `string` | [Session::$default] | The type of session to use when storing the auth user.
 session_key | `string` | auth_user | The name of the session variable used to save the user.

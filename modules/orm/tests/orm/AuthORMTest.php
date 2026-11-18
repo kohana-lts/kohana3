@@ -160,6 +160,78 @@ class Kohana_ORM_AuthORMTest extends Unittest_TestCase {
 		return ORM::factory('User', $id);
 	}
 
+	public function test_new_user_password_uses_password_hash()
+	{
+		$user = ORM::factory('User')->create_user(array(
+			'username'         => 'carol',
+			'email'            => 'carol@example.com',
+			'password'         => 'carol-password',
+			'password_confirm' => 'carol-password',
+		), array('username', 'email', 'password'));
+
+		$stored = DB::select('password')->from('users')->where('id', '=', $user->pk())->execute(static::$db)->get('password');
+
+		$this->assertTrue(password_verify('carol-password', $stored));
+
+		DB::insert('roles_users', array('user_id', 'role_id'))->values(array($user->pk(), 1))->execute(static::$db);
+
+		$this->assertFalse($this->auth->login('carol', 'wrong-password'));
+		$this->assertTrue($this->auth->login('carol', 'carol-password'));
+		$this->assertTrue($this->auth->check_password('carol-password'));
+		$this->assertFalse($this->auth->check_password('wrong-password'));
+	}
+
+	/**
+	 * A legacy HMAC hash logs in once, then the driver saves a new hash.
+	 */
+	public function test_legacy_hash_login_rehashes()
+	{
+		$legacy = hash_hmac('sha256', 'dave-password', 'kt-hash-key');
+		$user = $this->insert_user('dave', $legacy);
+
+		$this->assertFalse($this->auth->login('dave', 'wrong-password'));
+		$this->assertSame($legacy, $this->stored_password($user));
+
+		$this->assertTrue($this->auth->login('dave', 'dave-password'));
+
+		$stored = $this->stored_password($user);
+		$this->assertNotSame($legacy, $stored);
+		$this->assertTrue(password_verify('dave-password', $stored));
+		$this->assertEquals(1, ORM::factory('User', $user->pk())->logins);
+
+		$this->auth->logout();
+		$this->assertTrue($this->auth->login('dave', 'dave-password'));
+		$this->assertSame($stored, $this->stored_password($user));
+	}
+
+	/**
+	 * Without the model filter, the driver must not save the plain password.
+	 */
+	public function test_rehash_without_password_filter()
+	{
+		$legacy = hash_hmac('sha256', 'erin-password', 'kt-hash-key');
+		$id = $this->insert_user('erin', $legacy)->pk();
+
+		$this->assertTrue($this->auth->login(ORM::factory('Kt_Unfiltered_User', $id), 'erin-password'));
+		$this->assertTrue(password_verify('erin-password', $this->stored_password(ORM::factory('User', $id))));
+	}
+
+	public function test_legacy_hash_opt_out_keeps_hmac()
+	{
+		$this->auth = Auth_Ktorm::install(array('password_algo' => FALSE) + $this->auth_config());
+
+		$legacy = hash_hmac('sha256', 'fred-password', 'kt-hash-key');
+		$user = $this->insert_user('fred', $legacy);
+
+		$this->assertTrue($this->auth->login('fred', 'fred-password'));
+		$this->assertSame($legacy, $this->stored_password($user));
+	}
+
+	protected function stored_password($user)
+	{
+		return DB::select('password')->from('users')->where('id', '=', $user->pk())->execute(static::$db)->get('password');
+	}
+
 	/**
 	 * PHP 8 throws a TypeError for count() on a model.
 	 */
@@ -207,6 +279,19 @@ class Kohana_ORM_AuthORMTest extends Unittest_TestCase {
 
 		$this->assertTrue($user->loaded());
 		$this->assertEquals(0, ORM::factory('User', $user->pk())->logins);
+	}
+}
+
+/**
+ * User model without the password filter.
+ */
+class Model_Kt_Unfiltered_User extends Model_User {
+
+	protected $_object_name = 'user';
+
+	public function filters()
+	{
+		return array();
 	}
 }
 

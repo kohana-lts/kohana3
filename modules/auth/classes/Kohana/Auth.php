@@ -132,8 +132,8 @@ abstract class Kohana_Auth {
 	}
 
 	/**
-	 * Creates a hashed hmac password from a plaintext password. This
-	 * method is deprecated, [Auth::hash] should be used instead.
+	 * Creates a password hash. This method is deprecated, [Auth::hash]
+	 * should be used instead.
 	 *
 	 * @deprecated
 	 * @param  string  $password Plaintext password
@@ -144,17 +144,94 @@ abstract class Kohana_Auth {
 	}
 
 	/**
-	 * Perform a hmac hash, using the configured method.
+	 * Hashes a password with [password_hash] and the 'password_algo' and
+	 * 'password_options' config values. With 'password_algo' => FALSE,
+	 * it gives the legacy HMAC hash of [Auth::legacy_hash].
 	 *
-	 * @param   string  $str  string to hash
+	 * [!!] The hash has a random salt. Use [Auth::verify] to compare.
+	 *
+	 * @param   string  $str  password to hash
 	 * @return  string
 	 */
 	public function hash($str)
 	{
-		if ( ! $this->_config['hash_key'])
+		$algo = $this->_password_algo();
+
+		if ($algo === FALSE)
+			return $this->legacy_hash($str);
+
+		return password_hash((string) $str, $algo, $this->_password_options());
+	}
+
+	/**
+	 * Performs an HMAC hash with the 'hash_method' and 'hash_key' config
+	 * values. Only for hashes from before [password_hash] was the default.
+	 *
+	 * @param   string  $str  string to hash
+	 * @return  string
+	 */
+	public function legacy_hash($str)
+	{
+		if (empty($this->_config['hash_key']))
 			throw new Kohana_Exception('A valid hash key must be set in your auth config.');
 
-		return hash_hmac($this->_config['hash_method'], $str, $this->_config['hash_key']);
+		return hash_hmac($this->_config['hash_method'], (string) $str, $this->_config['hash_key']);
+	}
+
+	/**
+	 * Checks a password against a stored hash. Accepts [password_hash]
+	 * hashes and, when 'hash_key' is set, legacy HMAC hashes.
+	 *
+	 * @param   string  $password  plaintext password
+	 * @param   string  $hash      stored hash
+	 * @return  boolean
+	 */
+	public function verify($password, $hash)
+	{
+		if ( ! is_string($password) OR ! is_string($hash) OR $hash === '')
+			return FALSE;
+
+		if (password_get_info($hash)['algoName'] !== 'unknown')
+			return password_verify($password, $hash);
+
+		if (empty($this->_config['hash_key']))
+			return FALSE;
+
+		return hash_equals($hash, $this->legacy_hash($password));
+	}
+
+	/**
+	 * Checks if a stored hash must be replaced, because it is a legacy hash
+	 * or the algorithm or options changed. Always FALSE with
+	 * 'password_algo' => FALSE.
+	 *
+	 * @param   string  $hash  stored hash
+	 * @return  boolean
+	 */
+	public function needs_rehash($hash)
+	{
+		$algo = $this->_password_algo();
+
+		if ($algo === FALSE)
+			return FALSE;
+
+		return password_needs_rehash((string) $hash, $algo, $this->_password_options());
+	}
+
+	/**
+	 * @return  mixed  algorithm for [password_hash], or FALSE for legacy HMAC
+	 */
+	protected function _password_algo()
+	{
+		return isset($this->_config['password_algo']) ? $this->_config['password_algo'] : PASSWORD_DEFAULT;
+	}
+
+	/**
+	 * @return  array  options for [password_hash]
+	 */
+	protected function _password_options()
+	{
+		return isset($this->_config['password_options']) ? (array) $this->_config['password_options'] : array();
 	}
 
 	protected function complete_login($user)

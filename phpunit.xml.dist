@@ -10,6 +10,7 @@
 			<directory suffix="Test.php">system/tests</directory>
 		</testsuite>
 		<testsuite name="modules">
+			<directory suffix="Test.php">modules/auth/tests</directory>
 			<directory suffix="Test.php">modules/cache/tests</directory>
 			<directory suffix="Test.php">modules/codebench/tests</directory>
 			<directory suffix="Test.php">modules/database/tests</directory>

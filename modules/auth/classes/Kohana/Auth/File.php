@@ -2,6 +2,8 @@
 /**
  * File Auth driver.
  * [!!] this Auth driver does not support roles nor autologin.
+ * [!!] this Auth driver cannot save a new hash for a legacy HMAC hash.
+ *      Replace legacy hashes in the 'users' config with [Auth::hash] values.
  *
  * @package    Kohana/Auth
  * @author     Kohana Team
@@ -34,13 +36,7 @@ class Kohana_Auth_File extends Auth {
 	 */
 	protected function _login($username, $password, $remember)
 	{
-		if (is_string($password))
-		{
-			// Create a hashed password
-			$password = $this->hash($password);
-		}
-
-		if (isset($this->_users[$username]) AND $this->_users[$username] === $password)
+		if (isset($this->_users[$username]) AND $this->verify($password, $this->_users[$username]))
 		{
 			// Complete the login
 			return $this->complete_login($username);
@@ -74,7 +70,7 @@ class Kohana_Auth_File extends Auth {
 	}
 
 	/**
-	 * Compare password with original (plain text). Works for current (logged in) user
+	 * Compare a plain text password with the stored hash. Works for current (logged in) user
 	 *
 	 * @param   string   $password  Password
 	 * @return  boolean
@@ -83,12 +79,12 @@ class Kohana_Auth_File extends Auth {
 	{
 		$username = $this->get_user();
 
-		if ($username === FALSE)
+		if ($username === NULL OR $username === FALSE)
 		{
 			return FALSE;
 		}
 
-		return ($password === $this->password($username));
+		return $this->verify($password, $this->password($username));
 	}
 
 } // End Auth File
