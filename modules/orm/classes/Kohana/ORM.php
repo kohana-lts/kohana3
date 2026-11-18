@@ -545,13 +545,26 @@ class Kohana_ORM extends Model implements serializable {
 	 */
 	public function serialize()
 	{
+		return serialize($this->__serialize());
+	}
+
+	/**
+	 * Returns the object data and state for serialize(). PHP 8.1 deprecates
+	 * Serializable without __serialize() and __unserialize().
+	 *
+	 * @return array
+	 */
+	public function __serialize()
+	{
+		$data = array();
+
 		// Store only information about the object
 		foreach (array('_primary_key_value', '_object', '_changed', '_loaded', '_saved', '_sorting', '_original_values') as $var)
 		{
 			$data[$var] = $this->{$var};
 		}
 
-		return serialize($data);
+		return $data;
 	}
 
 	/**
@@ -576,10 +589,21 @@ class Kohana_ORM extends Model implements serializable {
 	 */
 	public function unserialize($data)
 	{
+		$this->__unserialize(unserialize($data));
+	}
+
+	/**
+	 * Restores the object from __serialize() data and reconnects the database.
+	 *
+	 * @param  array $data
+	 * @return void
+	 */
+	public function __unserialize(array $data)
+	{
 		// Initialize model
 		$this->_initialize();
 
-		foreach (unserialize($data) as $name => $var)
+		foreach ($data as $name => $var)
 		{
 			$this->{$name} = $var;
 		}
