@@ -360,7 +360,8 @@ class Kohana_UTF8Test extends Unittest_TestCase
 	 */
 	public function test_strcasecmp($input, $input2, $expected)
 	{
-		$this->assertSame($expected, UTF8::strcasecmp($input, $input2));
+		// PHP 8.2 strcmp() returns only -1, 0 or 1, so compare the sign
+		$this->assertSame($expected <=> 0, UTF8::strcasecmp($input, $input2) <=> 0);
 	}
 
 	/**

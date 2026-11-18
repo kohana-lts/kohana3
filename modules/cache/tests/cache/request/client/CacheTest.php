@@ -105,19 +105,25 @@ class Kohana_Request_Client_CacheTest extends Unittest_TestCase {
 
 		$key = $request->client()->cache()->create_cache_key($request);
 
-		$cache_mock->expects($this->at(0))
-			->method('set')
-			->with($this->stringEndsWith($key), $this->identicalTo(0));
+		$calls = array();
 
-		$cache_mock->expects($this->at(1))
+		$cache_mock->expects($this->exactly(2))
 			->method('set')
-			->with($this->identicalTo($key), $this->anything(), $this->identicalTo($lifetime))
-			->will($this->returnValue(TRUE));
+			->will($this->returnCallback(function () use ( & $calls) {
+				$calls[] = func_get_args();
+				return TRUE;
+			}));
 
 		$this->assertTrue(
 			$request->client()->cache()
 				->cache_response($key, $request, $response)
 		);
+
+		// First call resets the hit counter, second call stores the response
+		$this->assertStringEndsWith($key, $calls[0][0]);
+		$this->assertSame(0, $calls[0][1]);
+		$this->assertSame($key, $calls[1][0]);
+		$this->assertSame($lifetime, $calls[1][2]);
 
 		$this->assertSame(HTTP_Cache::CACHE_STATUS_SAVED, 
 			$response->headers(HTTP_Cache::CACHE_STATUS_KEY));
@@ -152,7 +158,10 @@ class Kohana_Request_Client_CacheTest extends Unittest_TestCase {
 		$cache_mock->expects($this->exactly(2))
 			->method('get')
 			->with($this->stringContains($key))
-			->will($this->returnValue($response));
+			->will($this->returnCallback(function ($id) use ($response) {
+				// The hit counter is an integer, the cached item is the response
+				return (strpos($id, HTTP_Cache::CACHE_HIT_KEY) === 0) ? 0 : $response;
+			}));
 
 		$request->client()->cache()->cache_response($key, $request);
 
