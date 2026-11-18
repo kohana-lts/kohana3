@@ -137,4 +137,64 @@ class Kohana_ExceptionTest extends Unittest_TestCase
 		$exception = new Exception('x');
 		$this->assertSame($exception, Kohana_Exception::exception($exception));
 	}
+
+	public function provider_production_response()
+	{
+		return array(
+			array(new Kohana_Exception('secret :value', array(':value' => 'database password')), 500, 'Internal Server Error'),
+			array(HTTP_Exception::factory(404, 'The secret page :uri', array(':uri' => '/x')), 404, 'Not Found'),
+			array(new ErrorException('secret notice', 0, E_NOTICE, '/secret/file.php', 10), 500, 'Internal Server Error'),
+		);
+	}
+
+	/**
+	 * In production the error page shows only the HTTP status.
+	 *
+	 * @test
+	 * @dataProvider provider_production_response
+	 * @covers Kohana_Exception::response
+	 * @covers Kohana_Exception::response_production
+	 */
+	public function test_production_response_has_no_details($exception, $status, $message)
+	{
+		$this->setEnvironment(array(
+			'Kohana::$environment' => Kohana::PRODUCTION,
+			'Kohana_Exception::$show_details' => NULL,
+		));
+
+		$response = Kohana_Exception::response($exception);
+		$body = $response->body();
+
+		$this->assertSame($status, $response->status());
+		$this->assertStringContainsString($status.' '.$message, $body);
+		$this->assertStringNotContainsString('secret', $body);
+		$this->assertStringNotContainsString('$_SERVER', $body);
+		$this->assertStringNotContainsString(Debug::path(SYSPATH), $body);
+		$this->assertStringNotContainsString(SYSPATH, $body);
+	}
+
+	/**
+	 * @test
+	 * @covers Kohana_Exception::show_details
+	 */
+	public function test_show_details()
+	{
+		$this->setEnvironment(array(
+			'Kohana::$environment' => Kohana::PRODUCTION,
+			'Kohana_Exception::$show_details' => NULL,
+		));
+		$this->assertFalse(Kohana_Exception::show_details());
+
+		$this->setEnvironment(array('Kohana_Exception::$show_details' => TRUE));
+		$this->assertTrue(Kohana_Exception::show_details());
+
+		$this->setEnvironment(array(
+			'Kohana::$environment' => Kohana::DEVELOPMENT,
+			'Kohana_Exception::$show_details' => NULL,
+		));
+		$this->assertTrue(Kohana_Exception::show_details());
+
+		$this->setEnvironment(array('Kohana_Exception::$show_details' => FALSE));
+		$this->assertFalse(Kohana_Exception::show_details());
+	}
 }

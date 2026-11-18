@@ -36,6 +36,17 @@ class Kohana_Kohana_Exception extends Exception {
 	public static $error_view_content_type = 'text/html';
 
 	/**
+	 * @var  boolean|NULL  show the message, trace and globals on the error page.
+	 *                     NULL shows them only when Kohana::$environment is not PRODUCTION.
+	 */
+	public static $show_details = NULL;
+
+	/**
+	 * @var  string  error view without details, see Kohana_Exception::$show_details
+	 */
+	public static $error_view_production = 'kohana/error_production';
+
+	/**
 	 * Creates a new translated exception.
 	 *
 	 *     throw new Kohana_Exception('Something went terrible wrong, :user',
@@ -125,10 +136,23 @@ class Kohana_Kohana_Exception extends Exception {
 			// Set the Status code to 500, and Content-Type to text/plain.
 			header('Content-Type: text/plain; charset='.Kohana::$charset, TRUE, 500);
 
-			echo Kohana_Exception::text($e);
+			echo Kohana_Exception::show_details() ? Kohana_Exception::text($e) : '500 Internal Server Error';
 
 			exit(1);
 		}
+	}
+
+	/**
+	 * Returns TRUE when the error page may show exception details.
+	 *
+	 * @return  boolean
+	 */
+	public static function show_details()
+	{
+		if (Kohana_Exception::$show_details !== NULL)
+			return (bool) Kohana_Exception::$show_details;
+
+		return Kohana::$environment !== Kohana::PRODUCTION;
 	}
 
 	/**
@@ -192,6 +216,9 @@ class Kohana_Kohana_Exception extends Exception {
 	 */
 	public static function response(Exception $e)
 	{
+		if ( ! Kohana_Exception::show_details())
+			return Kohana_Exception::response_production($e);
+
 		try
 		{
 			// Get the exception information
@@ -301,6 +328,44 @@ class Kohana_Kohana_Exception extends Exception {
 			$response->status(500);
 			$response->headers('Content-Type', 'text/plain');
 			$response->body(Kohana_Exception::text($e));
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Returns an error response with only the HTTP status. The details go
+	 * to the log, not to the client.
+	 *
+	 * @param   Exception  $e
+	 * @return  Response
+	 */
+	public static function response_production(Exception $e)
+	{
+		$status = ($e instanceof HTTP_Exception) ? (int) $e->getCode() : 500;
+
+		if ( ! isset(Response::$messages[$status]))
+		{
+			$status = 500;
+		}
+
+		$response = Response::factory();
+		$response->status($status);
+
+		try
+		{
+			$view = View::factory(Kohana_Exception::$error_view_production, array(
+				'status'  => $status,
+				'message' => Response::$messages[$status],
+			));
+
+			$response->headers('Content-Type', 'text/html; charset='.Kohana::$charset);
+			$response->body($view->render());
+		}
+		catch (Exception $view_error)
+		{
+			$response->headers('Content-Type', 'text/plain; charset='.Kohana::$charset);
+			$response->body($status.' '.Response::$messages[$status]);
 		}
 
 		return $response;
