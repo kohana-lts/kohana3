@@ -66,8 +66,8 @@ class Kohana_Kodoc_Property extends Kodoc {
 		// Show the value of static properties, but only if they are public or we are php 5.3 or higher and can force them to be accessible
 		if ($property->isStatic() AND ($property->isPublic() OR version_compare(PHP_VERSION, '5.3', '>=')))
 		{
-			// Force the property to be accessible
-			if (version_compare(PHP_VERSION, '5.3', '>='))
+			// Force the property to be accessible (automatic since PHP 8.1)
+			if (PHP_VERSION_ID < 80100)
 			{
 				$property->setAccessible(TRUE);
 			}
