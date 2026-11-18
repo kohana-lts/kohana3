@@ -14,6 +14,7 @@
 			<directory suffix="Test.php">modules/database/tests</directory>
 			<directory suffix="Test.php">modules/image/tests</directory>
 			<directory suffix="Test.php">modules/minion/tests</directory>
+			<directory suffix="Test.php">modules/orm/tests</directory>
 			<directory suffix="Test.php">modules/userguide/tests</directory>
 		</testsuite>
 	</testsuites>
