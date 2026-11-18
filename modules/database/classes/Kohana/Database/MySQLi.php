@@ -159,8 +159,19 @@ class Kohana_Database_MySQLi extends Database {
 			$benchmark = Profiler::start("Database ({$this->_instance})", $sql);
 		}
 
-		// Execute the query
-		if (($result = $this->_connection->query($sql)) === FALSE)
+		try
+		{
+			// Execute the query
+			$result = $this->_connection->query($sql);
+		}
+		catch (mysqli_sql_exception $e)
+		{
+			// PHP 8.1 enables mysqli exceptions by default. Throw a
+			// Database_Exception, as on earlier PHP versions.
+			$result = FALSE;
+		}
+
+		if ($result === FALSE)
 		{
 			if (isset($benchmark))
 			{
