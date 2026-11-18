@@ -97,8 +97,8 @@ class Kohana_Request_Client_Curl extends Request_Client_External {
 			$error = curl_error($curl);
 		}
 
-		// Close the connection
-		curl_close($curl);
+		// curl_close() has no effect since PHP 8.0 and is deprecated in 8.5
+		unset($curl);
 
 		if (isset($error))
 		{

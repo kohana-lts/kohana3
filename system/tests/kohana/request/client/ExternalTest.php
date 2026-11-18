@@ -188,4 +188,20 @@ class Kohana_Request_Client_ExternalTest extends Unittest_TestCase {
 
 		Request::$initial = $old_request;
 	}
+
+	/**
+	 * A failed curl request gives a Request_Exception, not a PHP 8.5
+	 * deprecation notice. Port 1 on localhost refuses the connection.
+	 *
+	 * @test
+	 * @requires extension curl
+	 */
+	public function test_curl_client_reports_connection_error()
+	{
+		$request = new Request('http://127.0.0.1:1/');
+		$request->client(Request_Client_External::factory(array(), 'Request_Client_Curl'));
+
+		$this->expectException(Request_Exception::class);
+		$request->execute();
+	}
 }
