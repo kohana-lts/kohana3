@@ -806,6 +806,112 @@ class Kohana_RequestTest extends Unittest_TestCase
 	}
 
 	/**
+	 * Provides test data for test_detect_client_ip()
+	 *
+	 * @return array
+	 */
+	public function provider_detect_client_ip()
+	{
+		$proxies = array('127.0.0.1', '10.0.0.0/8', '2001:db8::/32', 'localhost');
+
+		return array(
+			// No proxy: headers are ignored
+			array('6.6.6.6', array('REMOTE_ADDR' => '6.6.6.6', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4'), $proxies),
+			array('6.6.6.6', array('REMOTE_ADDR' => '6.6.6.6', 'HTTP_CLIENT_IP' => '1.2.3.4'), $proxies),
+			// The right-most untrusted entry, not the left-most spoofed one
+			array('1.2.3.4', array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '6.6.6.6, 1.2.3.4'), $proxies),
+			array('1.2.3.4', array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '6.6.6.6,1.2.3.4,10.1.2.3'), $proxies),
+			array('1.2.3.4', array('REMOTE_ADDR' => '10.20.30.40', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4'), $proxies),
+			array('2001:db9::1', array('REMOTE_ADDR' => '2001:db8::5', 'HTTP_X_FORWARDED_FOR' => '2001:db9::1'), $proxies),
+			// All entries are trusted: the left-most entry
+			array('10.0.0.7', array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '10.0.0.7, 10.0.0.8'), $proxies),
+			// An invalid entry: REMOTE_ADDR
+			array('127.0.0.1', array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '<script>'), $proxies),
+			array('127.0.0.1', array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4, x, 10.0.0.1'), $proxies),
+			array('127.0.0.1', array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => array('1.2.3.4')), $proxies),
+			// Client-IP only from a trusted proxy, and only a valid address
+			array('1.2.3.4', array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_CLIENT_IP' => '1.2.3.4'), $proxies),
+			array('127.0.0.1', array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_CLIENT_IP' => '1.2.3.4, 5.6.7.8'), $proxies),
+			// A CIDR entry does not match outside its range
+			array('11.0.0.1', array('REMOTE_ADDR' => '11.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4'), $proxies),
+			// No REMOTE_ADDR
+			array(NULL, array(), $proxies),
+		);
+	}
+
+	/**
+	 * @dataProvider provider_detect_client_ip
+	 * @covers Request::detect_client_ip
+	 */
+	public function test_detect_client_ip($expected, $server, $proxies)
+	{
+		$this->setEnvironment(array('Request::$trusted_proxies' => $proxies));
+
+		$this->assertSame($expected, Request::detect_client_ip($server));
+	}
+
+	/**
+	 * Provides test data for test_is_trusted_proxy()
+	 *
+	 * @return array
+	 */
+	public function provider_is_trusted_proxy()
+	{
+		return array(
+			array(TRUE, '127.0.0.1'),
+			array(TRUE, 'localhost'),
+			array(TRUE, '192.168.1.255'),
+			array(FALSE, '192.168.2.0'),
+			array(TRUE, '172.16.0.1'),
+			array(TRUE, '172.31.255.255'),
+			array(FALSE, '172.32.0.1'),
+			array(TRUE, '::1'),
+			array(TRUE, '0:0:0:0:0:0:0:1'),
+			array(TRUE, 'fd00::1234'),
+			array(FALSE, 'fe00::1'),
+			array(FALSE, '1.2.3.4'),
+			array(FALSE, 'not an ip'),
+			array(FALSE, ''),
+		);
+	}
+
+	/**
+	 * @dataProvider provider_is_trusted_proxy
+	 * @covers Request::is_trusted_proxy
+	 */
+	public function test_is_trusted_proxy($expected, $ip)
+	{
+		$this->setEnvironment(array('Request::$trusted_proxies' => array(
+			'127.0.0.1', 'localhost', '192.168.1.0/24', '172.16.0.0/12', '::1', 'fd00::/8', 'bad/cidr', '10.0.0.0/99',
+		)));
+
+		$this->assertSame($expected, Request::is_trusted_proxy($ip));
+	}
+
+	/**
+	 * The initial request uses the right-most untrusted X-Forwarded-For entry.
+	 */
+	public function test_initial_request_client_ip_from_forwarded_for()
+	{
+		$this->setEnvironment(array(
+			'Request::$initial' => NULL,
+			'Request::$client_ip' => NULL,
+			'_SERVER' => array(
+				'PATH_INFO' => '/',
+				'REMOTE_ADDR' => '127.0.0.1',
+				'REQUEST_METHOD' => 'GET',
+				'HTTP_X_FORWARDED_FOR' => '6.6.6.6, 1.2.3.4',
+			),
+			'_GET' => array(),
+			'_POST' => array(),
+		));
+
+		Request::factory();
+
+		$this->assertSame('1.2.3.4', Request::$client_ip);
+	}
+
+	/**
 	 * A request without a body has a content length of 0.
 	 *
 	 * @covers Request::content_length

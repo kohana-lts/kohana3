@@ -22,7 +22,7 @@ class Kohana_Request implements HTTP_Request {
 	public static $client_ip = '0.0.0.0';
 
 	/**
-	 * @var  string  trusted proxy server IPs
+	 * @var  array  trusted proxy server IPs and CIDR ranges, such as '10.0.0.0/8'
 	 */
 	public static $trusted_proxies = array('127.0.0.1', 'localhost', 'localhost.localdomain');
 
@@ -35,6 +35,134 @@ class Kohana_Request implements HTTP_Request {
 	 * @var  Request  currently executing request instance
 	 */
 	public static $current;
+
+	/**
+	 * Returns the client IP address of a request.
+	 *
+	 * Proxy headers count only when REMOTE_ADDR is in [Request::$trusted_proxies].
+	 * X-Forwarded-For is read from the right, because only the entries that
+	 * trusted proxies append are reliable. The result is the first entry that
+	 * is not a trusted proxy. An invalid entry gives REMOTE_ADDR. Client-IP
+	 * counts only when X-Forwarded-For is not set.
+	 *
+	 *     $ip = Request::detect_client_ip($_SERVER);
+	 *
+	 * @param   array   $server  server variables, such as $_SERVER
+	 * @return  string  NULL when REMOTE_ADDR is not set
+	 */
+	public static function detect_client_ip(array $server)
+	{
+		if ( ! isset($server['REMOTE_ADDR']))
+			return NULL;
+
+		$remote = (string) $server['REMOTE_ADDR'];
+
+		if ( ! Request::is_trusted_proxy($remote))
+			return $remote;
+
+		if (isset($server['HTTP_X_FORWARDED_FOR']))
+		{
+			if ( ! is_string($server['HTTP_X_FORWARDED_FOR']))
+				return $remote;
+
+			// Format: "X-Forwarded-For: client, proxy1, proxy2"
+			$client = $remote;
+
+			foreach (array_reverse(explode(',', $server['HTTP_X_FORWARDED_FOR'])) as $ip)
+			{
+				$ip = trim($ip);
+
+				if (filter_var($ip, FILTER_VALIDATE_IP) === FALSE)
+					return $remote;
+
+				$client = $ip;
+
+				if ( ! Request::is_trusted_proxy($ip))
+					break;
+			}
+
+			return $client;
+		}
+
+		if (isset($server['HTTP_CLIENT_IP'])
+			AND is_string($server['HTTP_CLIENT_IP'])
+			AND filter_var(trim($server['HTTP_CLIENT_IP']), FILTER_VALIDATE_IP) !== FALSE)
+		{
+			return trim($server['HTTP_CLIENT_IP']);
+		}
+
+		return $remote;
+	}
+
+	/**
+	 * Checks if an address is in [Request::$trusted_proxies]. An entry is an
+	 * exact address or name, or an IPv4 or IPv6 CIDR range.
+	 *
+	 *     Request::$trusted_proxies[] = '10.0.0.0/8';
+	 *     Request::is_trusted_proxy('10.1.2.3'); // TRUE
+	 *
+	 * @param   string  $ip  address to check
+	 * @return  boolean
+	 */
+	public static function is_trusted_proxy($ip)
+	{
+		$ip = (string) $ip;
+		$packed = (filter_var($ip, FILTER_VALIDATE_IP) === FALSE) ? FALSE : inet_pton($ip);
+
+		foreach ((array) Request::$trusted_proxies as $proxy)
+		{
+			$proxy = (string) $proxy;
+
+			if ($proxy === $ip)
+				return TRUE;
+
+			if ($packed === FALSE)
+				continue;
+
+			$bits = NULL;
+
+			if (strpos($proxy, '/') !== FALSE)
+			{
+				list($proxy, $bits) = explode('/', $proxy, 2);
+			}
+
+			if (filter_var($proxy, FILTER_VALIDATE_IP) === FALSE)
+				continue;
+
+			$subnet = inet_pton($proxy);
+
+			// IPv4 and IPv6 never match each other
+			if (strlen($subnet) !== strlen($packed))
+				continue;
+
+			if ($bits === NULL)
+			{
+				if ($subnet === $packed)
+					return TRUE;
+
+				continue;
+			}
+
+			if ( ! ctype_digit($bits) OR (int) $bits > strlen($packed) * 8)
+				continue;
+
+			$bits  = (int) $bits;
+			$bytes = intdiv($bits, 8);
+
+			if (substr($subnet, 0, $bytes) !== substr($packed, 0, $bytes))
+				continue;
+
+			if ($bits % 8 === 0)
+				return TRUE;
+
+			$mask = (0xFF << (8 - $bits % 8)) & 0xFF;
+
+			if ((ord($subnet[$bytes]) & $mask) === (ord($packed[$bytes]) & $mask))
+				return TRUE;
+		}
+
+		return FALSE;
+	}
 
 	/**
 	 * Creates a new request object for the given URI. New requests should be
@@ -75,7 +203,8 @@ class Kohana_Request implements HTTP_Request {
 			if (( ! empty($_SERVER['HTTPS']) AND filter_var($_SERVER['HTTPS'], FILTER_VALIDATE_BOOLEAN))
 			   OR (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])
 			   	   AND $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
-			       AND in_array($_SERVER['REMOTE_ADDR'], Request::$trusted_proxies))
+			       AND isset($_SERVER['REMOTE_ADDR'])
+			       AND Request::is_trusted_proxy($_SERVER['REMOTE_ADDR']))
 			{
 				// This request is secure
 				$secure = TRUE;
@@ -99,35 +228,9 @@ class Kohana_Request implements HTTP_Request {
 				$requested_with = $_SERVER['HTTP_X_REQUESTED_WITH'];
 			}
 
-			if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])
-			    AND isset($_SERVER['REMOTE_ADDR'])
-			    AND in_array($_SERVER['REMOTE_ADDR'], Request::$trusted_proxies))
+			if (($client_ip = Request::detect_client_ip($_SERVER)) !== NULL)
 			{
-				// Use the forwarded IP address, typically set when the
-				// client is using a proxy server.
-				// Format: "X-Forwarded-For: client1, proxy1, proxy2"
-				$client_ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-
-				Request::$client_ip = array_shift($client_ips);
-
-				unset($client_ips);
-			}
-			elseif (isset($_SERVER['HTTP_CLIENT_IP'])
-			        AND isset($_SERVER['REMOTE_ADDR'])
-			        AND in_array($_SERVER['REMOTE_ADDR'], Request::$trusted_proxies))
-			{
-				// Use the forwarded IP address, typically set when the
-				// client is using a proxy server.
-				$client_ips = explode(',', $_SERVER['HTTP_CLIENT_IP']);
-
-				Request::$client_ip = array_shift($client_ips);
-
-				unset($client_ips);
-			}
-			elseif (isset($_SERVER['REMOTE_ADDR']))
-			{
-				// The remote IP address
-				Request::$client_ip = $_SERVER['REMOTE_ADDR'];
+				Request::$client_ip = $client_ip;
 			}
 
 			if ($method !== HTTP_Request::GET)
