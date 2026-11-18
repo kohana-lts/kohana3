@@ -15,7 +15,7 @@
 
 	<meta charset="utf-8" />
 	<title><?php if ($class !== ''): ?>
-			<?php echo $class, ' · ' ?>
+			<?php echo HTML::chars($class), ' · ' ?>
 		<?php endif; ?>Codebench</title>
 
 	<style>
@@ -76,7 +76,7 @@
 		.help { cursor:help; }
 	</style>
 
-	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
 	<script>
 		$(document).ready(function() {
 			// Insert "Toggle All" button
@@ -157,7 +157,7 @@
 
 	<form id="runner" method="post" action="<?php echo URL::site('codebench') ?>">
 		<h1>
-			<input name="class" type="text" value="<?php echo ($class !== '') ? $class : 'Bench_' ?>" size="25" title="Name of the Codebench library to run" />
+			<input name="class" type="text" value="<?php echo ($class !== '') ? HTML::chars($class) : 'Bench_' ?>" size="25" title="Name of the Codebench library to run" />
 			<input type="submit" value="Run" />
 			<?php if ( ! empty($class)) { ?>
 				<?php if (empty($codebench)) { ?>
