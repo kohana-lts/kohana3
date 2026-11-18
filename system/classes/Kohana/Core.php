@@ -659,6 +659,10 @@ class Kohana_Core {
 	 */
 	public static function find_file($dir, $file, $ext = NULL, $array = FALSE)
 	{
+		// Names from views, messages or the URL must stay inside the include paths
+		if (strpos($file, "\0") !== FALSE OR preg_match('#(^|[/\\\\])\.\.($|[/\\\\])#', $file))
+			return $array ? array() : FALSE;
+
 		if ($ext === NULL)
 		{
 			// Use the default extension

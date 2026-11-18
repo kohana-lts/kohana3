@@ -509,4 +509,38 @@ class Kohana_CoreTest extends Unittest_TestCase
 
 		return fileperms($path) & 07777;
 	}
+
+	public function provider_find_file_rejects_parent_paths()
+	{
+		return array(
+			array('views', '../classes/Kohana/Core', 'php'),
+			array('views', 'kohana/../../classes/Kohana/Core', 'php'),
+			array('views', '..\\classes\\Kohana\\Core', 'php'),
+			array('views', '..', NULL),
+			array('views', "kohana/error\0", 'php'),
+		);
+	}
+
+	/**
+	 * A name must not leave the directory of the lookup.
+	 *
+	 * @test
+	 * @dataProvider provider_find_file_rejects_parent_paths
+	 * @covers Kohana::find_file
+	 */
+	public function test_find_file_rejects_parent_paths($dir, $file, $ext)
+	{
+		$this->assertFalse(Kohana::find_file($dir, $file, $ext));
+		$this->assertSame(array(), Kohana::find_file($dir, $file, $ext, TRUE));
+	}
+
+	/**
+	 * @test
+	 * @covers Kohana::find_file
+	 */
+	public function test_find_file_allows_dots_in_names()
+	{
+		$this->assertNotFalse(Kohana::find_file('views', 'kohana/error'));
+		$this->assertFalse(Kohana::find_file('views', 'kohana/..error'));
+	}
 }
