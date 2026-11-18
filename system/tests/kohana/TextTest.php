@@ -344,6 +344,23 @@ class Kohana_TextTest extends Unittest_TestCase
 	}
 
 	/**
+	 * A seed for the Mersenne Twister must not make the output predictable.
+	 *
+	 * @test
+	 * @covers Text::random
+	 */
+	function test_random_does_not_use_seeded_generator()
+	{
+		mt_srand(1);
+		$first = Text::random('alnum', 32);
+		mt_srand(1);
+		$second = Text::random('alnum', 32);
+		mt_srand();
+
+		$this->assertNotSame($first, $second);
+	}
+
+	/**
 	 * Provides test data for test_similar
 	 *
 	 * @return array

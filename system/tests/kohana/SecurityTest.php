@@ -156,6 +156,20 @@ class Kohana_SecurityTest extends Unittest_TestCase
 	}
 
 	/**
+	 * @test
+	 * @covers Security::token
+	 */
+	public function test_token_is_base64_of_32_random_bytes()
+	{
+		$this->setEnvironment(array('Security::$token_name' => 'token_random'));
+		$token = Security::token(TRUE);
+
+		$this->assertSame(32, strlen(base64_decode($token, TRUE)));
+		$this->assertNotSame($token, Security::token(TRUE));
+		Session::instance()->delete(Security::$token_name);
+	}
+
+	/**
 	 * Provides test data for Security::token()
 	 *
 	 * @return array Test data sets
