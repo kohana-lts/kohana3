@@ -3,6 +3,7 @@ name: tests
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,6 +30,10 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
+      memcached:
+        image: memcached:1.6
+        ports:
+          - 11211:11211
 
     env:
       KOHANA_TEST_MYSQL_HOST: 127.0.0.1
