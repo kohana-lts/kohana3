@@ -13,5 +13,6 @@ function _strlen($str)
 	if (UTF8::is_ascii($str))
 		return strlen($str);
 
-	return strlen(utf8_decode($str));
+	// Count all bytes except UTF-8 continuation bytes (utf8_decode() is deprecated)
+	return strlen(preg_replace('/[\x80-\xBF]/', '', $str));
 }

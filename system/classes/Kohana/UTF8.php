@@ -169,7 +169,7 @@ class Kohana_UTF8 {
 	public static function strlen($str)
 	{
 		if (UTF8::$server_utf8)
-			return mb_strlen($str, Kohana::$charset);
+			return mb_strlen((string) $str, Kohana::$charset);
 
 		if ( ! isset(UTF8::$called[__FUNCTION__]))
 		{
@@ -200,7 +200,7 @@ class Kohana_UTF8 {
 	public static function strpos($str, $search, $offset = 0)
 	{
 		if (UTF8::$server_utf8)
-			return mb_strpos($str, $search, $offset, Kohana::$charset);
+			return mb_strpos((string) $str, (string) $search, (int) $offset, Kohana::$charset);
 
 		if ( ! isset(UTF8::$called[__FUNCTION__]))
 		{
@@ -230,7 +230,7 @@ class Kohana_UTF8 {
 	public static function strrpos($str, $search, $offset = 0)
 	{
 		if (UTF8::$server_utf8)
-			return mb_strrpos($str, $search, $offset, Kohana::$charset);
+			return mb_strrpos((string) $str, (string) $search, (int) $offset, Kohana::$charset);
 
 		if ( ! isset(UTF8::$called[__FUNCTION__]))
 		{
@@ -261,8 +261,8 @@ class Kohana_UTF8 {
 	{
 		if (UTF8::$server_utf8)
 			return ($length === NULL)
-				? mb_substr($str, $offset, mb_strlen($str), Kohana::$charset)
-				: mb_substr($str, $offset, $length, Kohana::$charset);
+				? mb_substr((string) $str, $offset, NULL, Kohana::$charset)
+				: mb_substr((string) $str, $offset, $length, Kohana::$charset);
 
 		if ( ! isset(UTF8::$called[__FUNCTION__]))
 		{
@@ -315,7 +315,7 @@ class Kohana_UTF8 {
 	public static function strtolower($str)
 	{
 		if (UTF8::$server_utf8)
-			return mb_strtolower($str, Kohana::$charset);
+			return mb_strtolower((string) $str, Kohana::$charset);
 
 		if ( ! isset(UTF8::$called[__FUNCTION__]))
 		{
@@ -341,7 +341,7 @@ class Kohana_UTF8 {
 	public static function strtoupper($str)
 	{
 		if (UTF8::$server_utf8)
-			return mb_strtoupper($str, Kohana::$charset);
+			return mb_strtoupper((string) $str, Kohana::$charset);
 
 		if ( ! isset(UTF8::$called[__FUNCTION__]))
 		{

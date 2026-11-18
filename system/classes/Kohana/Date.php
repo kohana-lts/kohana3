@@ -57,7 +57,11 @@ class Kohana_Date {
 			$local = date_default_timezone_get();
 		}
 
-		if (is_int($now))
+		if ($now === NULL)
+		{
+			$now = 'now';
+		}
+		elseif (is_int($now))
 		{
 			// Convert the timestamp into a string
 			$now = date(DateTime::RFC2822, $now);
@@ -281,7 +285,7 @@ class Kohana_Date {
 		{
 			for ($i = 1; $i <= 12; ++$i)
 			{
-				$months[$i] = strftime($format, mktime(0, 0, 0, $i, 1));
+				$months[$i] = Date::_month_name($i, $format === Date::MONTHS_LONG);
 			}
 		}
 		else
@@ -317,6 +321,45 @@ class Kohana_Date {
 		}
 
 		return $years;
+	}
+
+	/**
+	 * Returns the name of a month in the LC_TIME locale, as strftime() did.
+	 * PHP 8.1 deprecates strftime(). Without ext-intl the names are English.
+	 *
+	 * @param   integer $month  1 to 12
+	 * @param   boolean $long   full name ("January") or short name ("Jan")
+	 * @return  string
+	 */
+	protected static function _month_name($month, $long)
+	{
+		$time = mktime(0, 0, 0, $month, 1);
+
+		if (class_exists('IntlDateFormatter'))
+		{
+			$locale = setlocale(LC_TIME, 0);
+
+			if ($locale === FALSE OR $locale === 'C' OR $locale === 'POSIX')
+			{
+				$locale = 'en_US';
+			}
+
+			$formatter = new IntlDateFormatter(
+				strtok($locale, '.@'),
+				IntlDateFormatter::NONE,
+				IntlDateFormatter::NONE,
+				NULL,
+				IntlDateFormatter::GREGORIAN,
+				$long ? 'LLLL' : 'LLL'
+			);
+
+			$name = $formatter->format($time);
+
+			if (is_string($name))
+				return $name;
+		}
+
+		return date($long ? 'F' : 'M', $time);
 	}
 
 	/**
