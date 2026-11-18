@@ -915,8 +915,16 @@ class Kohana_ValidTest extends Unittest_TestCase
 			array('http://127.0.0.1:80', TRUE),
 			array('http://user@127.0.0.1', TRUE),
 			array('http://user:pass@127.0.0.1', TRUE),
-			array('ftp://my.server.com', TRUE),
-			array('rss+xml://rss.example.com', TRUE),
+			array('https://google.com', TRUE),
+			array('HTTPS://google.com', TRUE),
+
+			// Only http and https by default
+			array('ftp://my.server.com', FALSE),
+			array('rss+xml://rss.example.com', FALSE),
+			array('javascript://example.com/%0Aalert(1)', FALSE),
+			array('data://x.com/text', FALSE),
+			array('file://localhost/etc/passwd', FALSE),
+			array('gopher://127.0.0.1:6379/_x', FALSE),
 
 			array('http://google.2com', FALSE),
 			array('http://google.com?q=abc', FALSE),
@@ -954,6 +962,64 @@ class Kohana_ValidTest extends Unittest_TestCase
 			$expected,
 			Valid::url($url)
 		);
+	}
+
+	/**
+	 * Provides test data for test_url_schemes()
+	 *
+	 * @return array
+	 */
+	public function provider_url_schemes()
+	{
+		return array(
+			// NULL allows any scheme, as before
+			array('ftp://my.server.com', NULL, TRUE),
+			array('rss+xml://rss.example.com', NULL, TRUE),
+			array('javascript://example.com/%0Aalert(1)', NULL, TRUE),
+			array('http://google.2com', NULL, FALSE),
+
+			array('ftp://my.server.com', array('ftp'), TRUE),
+			array('FTP://my.server.com', array('ftp'), TRUE),
+			array('ftp://my.server.com', array('FTP'), TRUE),
+			array('http://my.server.com', array('ftp'), FALSE),
+			array('ftp://my.server.com', array(), FALSE),
+			array('ftp://my.server.com', 'ftp', TRUE),
+		);
+	}
+
+	/**
+	 * Tests Valid::url() with the $schemes argument
+	 *
+	 * @test
+	 * @dataProvider provider_url_schemes
+	 * @param string  $url       The url to test
+	 * @param array   $schemes   Allowed schemes
+	 * @param boolean $expected  Is it valid?
+	 */
+	public function test_url_schemes($url, $schemes, $expected)
+	{
+		$this->assertSame($expected, Valid::url($url, $schemes));
+	}
+
+	/**
+	 * The "url" Validation rule uses the default schemes, and a rule
+	 * parameter can change them.
+	 *
+	 * @test
+	 */
+	public function test_url_validation_rule()
+	{
+		$validation = Validation::factory(array(
+			'a' => 'javascript://example.com/%0Aalert(1)',
+			'b' => 'https://example.com/',
+			'c' => 'ftp://example.com/',
+		))
+			->rule('a', 'url')
+			->rule('b', 'url')
+			->rule('c', 'url', array(':value', NULL));
+
+		$this->assertFalse($validation->check());
+		$this->assertSame(array('a'), array_keys($validation->errors()));
 	}
 
 	/**

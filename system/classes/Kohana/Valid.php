@@ -157,12 +157,17 @@ class Kohana_Valid {
 	}
 
 	/**
-	 * Validate a URL.
+	 * Validate a URL. By default, only http and https URLs pass, because
+	 * other schemes such as javascript: are unsafe in a link.
 	 *
-	 * @param   string  $url    URL
+	 *     // Allow ftp URLs too
+	 *     $validation->rule('link', 'url', array(':value', array('http', 'https', 'ftp')));
+	 *
+	 * @param   string  $url      URL
+	 * @param   mixed   $schemes  allowed scheme or array of schemes (case-insensitive), NULL allows any scheme
 	 * @return  boolean
 	 */
-	public static function url($url)
+	public static function url($url, $schemes = array('http', 'https'))
 	{
 		// Based on http://www.apps.ietf.org/rfc/rfc1738.html#sec-5
 		if ( ! preg_match(
@@ -199,6 +204,15 @@ class Kohana_Valid {
 
 			$~iDx', (string) $url, $matches))
 			return FALSE;
+
+		if ($schemes !== NULL)
+		{
+			// The regex makes sure that "://" follows the scheme
+			$scheme = strtolower(strstr((string) $url, ':', TRUE));
+
+			if ( ! in_array($scheme, array_map('strtolower', (array) $schemes), TRUE))
+				return FALSE;
+		}
 
 		// We matched an IP address
 		if ( ! isset($matches[1]))
