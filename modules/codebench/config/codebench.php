@@ -13,4 +13,9 @@ return array(
 	 */
 	'expand_all' => FALSE,
 
+	/**
+	 * Register the codebench route when Kohana::$environment is PRODUCTION.
+	 */
+	'production' => FALSE,
+
 );
