@@ -28,6 +28,13 @@ class Kohana_ORM extends Model implements serializable {
 	protected static $_init_cache = array();
 
 	/**
+	 * Allow [ORM::values] without a list of expected columns in all models.
+	 * See [ORM::$_values_without_expected].
+	 * @var bool
+	 */
+	public static $values_without_expected = FALSE;
+
+	/**
 	 * Creates and returns a new model. 
 	 * Model name must be passed with its' original casing, e.g.
 	 * 
@@ -188,6 +195,13 @@ class Kohana_ORM extends Model implements serializable {
 	 * @var bool
 	 */
 	protected $_reload_on_wakeup = TRUE;
+
+	/**
+	 * Allow [ORM::values] without a list of expected columns. Then values()
+	 * sets every column from the input, so a form can change any column.
+	 * @var bool
+	 */
+	protected $_values_without_expected = FALSE;
 
 	/**
 	 * Database Object
@@ -792,15 +806,26 @@ class Kohana_ORM extends Model implements serializable {
 	 * Set values from an array with support for one-one relationships.  This method should be used
 	 * for loading in post data, etc.
 	 *
+	 * [!!] $expected is required, unless [ORM::$_values_without_expected] or
+	 * [ORM::$values_without_expected] is TRUE.
+	 *
 	 * @param  array $values   Array of column => val
 	 * @param  array $expected Array of keys to take from $values
 	 * @return ORM
+	 * @throws Kohana_Exception when $expected is NULL
 	 */
 	public function values(array $values, ?array $expected = NULL)
 	{
 		// Default to expecting everything except the primary key
 		if ($expected === NULL)
 		{
+			if ( ! $this->_values_without_expected AND ! ORM::$values_without_expected)
+			{
+				throw new Kohana_Exception('ORM::values() needs the list of expected columns for the :model model', array(
+					':model' => $this->_object_name,
+				));
+			}
+
 			$expected = array_keys($this->_table_columns);
 
 			// Don't set the primary key by default

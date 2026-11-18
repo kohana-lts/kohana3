@@ -72,7 +72,7 @@ class Kohana_ORM_SQLiteTest extends Unittest_TestCase {
 	{
 		foreach (array('a', 'b', 'c') as $i => $name)
 		{
-			ORM::factory('Kt_Item')->values(array('name' => $name, 'score' => $i))->save();
+			ORM::factory('Kt_Item')->values(array('name' => $name, 'score' => $i), array('name', 'score'))->save();
 		}
 
 		$this->assertSame(3, ORM::factory('Kt_Item')->count_all());
@@ -103,11 +103,50 @@ class Kohana_ORM_SQLiteTest extends Unittest_TestCase {
 		$this->assertNull($item->id);
 	}
 
+	/**
+	 * Without a list of columns, values() would set every column from the
+	 * input (mass assignment).
+	 */
+	public function test_values_without_expected_throws()
+	{
+		$this->expectException(Kohana_Exception::class);
+		$this->expectExceptionMessage('ORM::values()');
+
+		ORM::factory('Kt_Item')->values(array('name' => 'x', 'score' => 5));
+	}
+
+	public function test_values_without_expected_with_model_opt_out()
+	{
+		$item = ORM::factory('Kt_Open_Item')->values(array('name' => 'x', 'score' => 5, 'id' => 99));
+
+		$this->assertSame('x', $item->name);
+		$this->assertSame(5, $item->score);
+		$this->assertNull($item->id);
+	}
+
+	public function test_values_without_expected_with_global_opt_out()
+	{
+		ORM::$values_without_expected = TRUE;
+
+		try
+		{
+			$item = ORM::factory('Kt_Item')->values(array('name' => 'x', 'score' => 5, 'id' => 99));
+		}
+		finally
+		{
+			ORM::$values_without_expected = FALSE;
+		}
+
+		$this->assertSame('x', $item->name);
+		$this->assertSame(5, $item->score);
+		$this->assertNull($item->id);
+	}
+
 	public function test_validation_failure_throws()
 	{
 		try
 		{
-			ORM::factory('Kt_Item')->values(array('name' => ''))->save();
+			ORM::factory('Kt_Item')->values(array('name' => ''), array('name'))->save();
 			$this->fail('ORM_Validation_Exception was not thrown');
 		}
 		catch (ORM_Validation_Exception $e)
@@ -118,11 +157,11 @@ class Kohana_ORM_SQLiteTest extends Unittest_TestCase {
 
 	public function test_has_many_and_belongs_to()
 	{
-		$item = ORM::factory('Kt_Item')->values(array('name' => 'parent', 'score' => 1))->save();
+		$item = ORM::factory('Kt_Item')->values(array('name' => 'parent', 'score' => 1), array('name', 'score'))->save();
 
 		foreach (array('one', 'two') as $body)
 		{
-			ORM::factory('Kt_Note')->values(array('item_id' => $item->pk(), 'body' => $body))->save();
+			ORM::factory('Kt_Note')->values(array('item_id' => $item->pk(), 'body' => $body), array('item_id', 'body'))->save();
 		}
 
 		$this->assertSame(2, $item->notes->count_all());
@@ -131,7 +170,7 @@ class Kohana_ORM_SQLiteTest extends Unittest_TestCase {
 
 	public function test_serialize_round_trip()
 	{
-		$item = ORM::factory('Kt_Item')->values(array('name' => 'cached', 'score' => 2))->save();
+		$item = ORM::factory('Kt_Item')->values(array('name' => 'cached', 'score' => 2), array('name', 'score'))->save();
 
 		$copy = unserialize(serialize($item));
 
@@ -161,6 +200,12 @@ class Model_Kt_Item extends ORM {
 			'name' => array(array('not_empty')),
 		);
 	}
+}
+
+class Model_Kt_Open_Item extends Model_Kt_Item {
+
+	protected $_object_name = 'kt_open_item';
+	protected $_values_without_expected = TRUE;
 }
 
 class Model_Kt_Note extends ORM {

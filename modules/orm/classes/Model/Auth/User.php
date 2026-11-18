@@ -143,6 +143,12 @@ class Model_Auth_User extends ORM {
 	}
 
 	/**
+	 * @var array columns that create_user() and update_user() set when the
+	 *            caller gives no list of columns
+	 */
+	protected $_user_columns = array('username', 'password', 'email');
+
+	/**
 	 * Create a new user
 	 *
 	 * Example usage:
@@ -155,11 +161,16 @@ class Model_Auth_User extends ORM {
 	 * ~~~
 	 *
 	 * @param array $values
-	 * @param array $expected
+	 * @param array $expected columns to set, NULL for username, password and email
 	 * @throws ORM_Validation_Exception
 	 */
 	public function create_user($values, $expected)
 	{
+		if ($expected === NULL)
+		{
+			$expected = $this->_user_columns;
+		}
+
 		// Validation for passwords
 		$extra_validation = Model_User::get_password_validation($values)
 			->rule('password', 'not_empty');
@@ -185,11 +196,16 @@ class Model_Auth_User extends ORM {
 	 * ~~~
 	 *
 	 * @param array $values
-	 * @param array $expected
+	 * @param array $expected columns to set, NULL for username, password and email
 	 * @throws ORM_Validation_Exception
 	 */
 	public function update_user($values, $expected = NULL)
 	{
+		if ($expected === NULL)
+		{
+			$expected = $this->_user_columns;
+		}
+
 		if (empty($values['password']))
 		{
 			unset($values['password'], $values['password_confirm']);
