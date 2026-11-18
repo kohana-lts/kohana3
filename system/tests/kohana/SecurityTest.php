@@ -61,6 +61,58 @@ class Kohana_SecurityTest extends Unittest_TestCase
 	}
 
 	/**
+	 * Provides non-string input for test_check_rejects_non_string_input()
+	 *
+	 * @return array
+	 */
+	public function provider_non_string_input()
+	{
+		return array(
+			array(array('a')),
+			array(array()),
+			array(NULL),
+			array(123),
+			array(new stdClass),
+		);
+	}
+
+	/**
+	 * Array input from a form (token[]=x) must fail the check, not raise a TypeError.
+	 *
+	 * @test
+	 * @dataProvider provider_non_string_input
+	 * @covers Security::check
+	 */
+	public function test_check_rejects_non_string_input($input)
+	{
+		Security::token();
+		$this->assertFalse(Security::check($input));
+	}
+
+	/**
+	 * @test
+	 * @dataProvider provider_non_string_input
+	 * @covers Security::slow_equals
+	 */
+	public function test_slow_equals_rejects_non_string_input($input)
+	{
+		$this->assertFalse(Security::slow_equals('abc', $input));
+		$this->assertFalse(Security::slow_equals($input, 'abc'));
+	}
+
+	/**
+	 * @test
+	 * @covers Security::slow_equals
+	 */
+	public function test_slow_equals_compares_strings()
+	{
+		$this->assertTrue(Security::slow_equals('abc', 'abc'));
+		$this->assertTrue(Security::slow_equals('', ''));
+		$this->assertFalse(Security::slow_equals('abc', 'abd'));
+		$this->assertFalse(Security::slow_equals('abc', 'abcd'));
+	}
+
+	/**
 	 * Provides test data for Security::token()
 	 *
 	 * @return array Test data sets

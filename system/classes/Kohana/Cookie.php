@@ -50,7 +50,7 @@ class Kohana_Cookie {
 	 *
 	 * @param   string  $key        cookie name
 	 * @param   mixed   $default    default value to return
-	 * @return  string
+	 * @return  string  or $default when the cookie is missing, unsigned or not a string
 	 */
 	public static function get($key, $default = NULL)
 	{
@@ -62,6 +62,12 @@ class Kohana_Cookie {
 
 		// Get the cookie value
 		$cookie = $_COOKIE[$key];
+
+		if ( ! is_string($cookie))
+		{
+			// "name[x]=y" in the Cookie header gives an array
+			return $default;
+		}
 
 		// Find the position of the split between salt and contents
 		$split = strlen(Cookie::salt($key, NULL));

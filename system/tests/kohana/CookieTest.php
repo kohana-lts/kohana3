@@ -139,6 +139,18 @@ class Kohana_CookieTest extends Unittest_TestCase
 	}
 
 	/**
+	 * A request such as "Cookie: cookie[40]=~" makes $_COOKIE['cookie'] an array.
+	 *
+	 * @covers Cookie::get
+	 */
+	public function test_get_returns_default_if_cookie_is_array()
+	{
+		$split = strlen(Cookie::salt('cookie', NULL));
+		$_COOKIE['cookie'] = array($split => '~');
+		$this->assertEquals('default', Kohana_CookieTest_TestableCookie::get('cookie', 'default'));
+	}
+
+	/**
 	 * If a cookie looks like a signed cookie but the signature no longer matches, it should be deleted.
 	 *
 	 * @covers Cookie::get

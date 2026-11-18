@@ -76,32 +76,28 @@ class Kohana_Security {
 	 *     }
 	 *
 	 * @param   string  $token  token to check
-	 * @return  boolean
+	 * @return  boolean FALSE also for non-string input, such as an array from `token[]=`
 	 * @uses    Security::token
 	 */
 	public static function check($token)
 	{
 		return Security::slow_equals(Security::token(), $token);
 	}
-	
-	
-	
+
 	/**
 	 * Compare two hashes in a time-invariant manner.
 	 * Prevents cryptographic side-channel attacks (timing attacks, specifically)
-	 * 
-	 * @param string $a cryptographic hash
-	 * @param string $b cryptographic hash
-	 * @return boolean
+	 *
+	 * @param   string  $a  cryptographic hash
+	 * @param   string  $b  cryptographic hash
+	 * @return  boolean FALSE when one of the values is not a string
 	 */
-	public static function slow_equals($a, $b) 
+	public static function slow_equals($a, $b)
 	{
-		$diff = strlen($a) ^ strlen($b);
-		for($i = 0; $i < strlen($a) AND $i < strlen($b); $i++)
-		{
-			$diff |= ord($a[$i]) ^ ord($b[$i]);
-		}
-		return $diff === 0; 
+		if ( ! is_string($a) OR ! is_string($b))
+			return FALSE;
+
+		return hash_equals($a, $b);
 	}
 
 
