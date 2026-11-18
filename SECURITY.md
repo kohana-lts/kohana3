@@ -51,6 +51,8 @@ Notes:
   - `Security::token()`: the old fallback does not run when OpenSSL is loaded.
   - K3-16 and K3-21: the tests failed before the fix only because the new
     methods did not exist.
+- K3-24 has no automated test. It was checked by hand with the PHP built-in
+  server.
 
 ## PHP 8 problems with a security effect
 
