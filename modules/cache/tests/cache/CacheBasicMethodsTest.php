@@ -9,7 +9,7 @@
  * @copyright  (c) 2009-2012 Kohana Team
  * @license    http://kohanaphp.com/license
  */
-abstract class Kohana_CacheBasicMethodsTest extends PHPUnit_Framework_TestCase {
+abstract class Kohana_CacheBasicMethodsTest extends Unittest_TestCase {
 
 	/**
 	 * @var     Cache driver for this test
@@ -28,7 +28,7 @@ abstract class Kohana_CacheBasicMethodsTest extends PHPUnit_Framework_TestCase {
 	 *
 	 * @return  void
 	 */
-	public function setUp()
+	public function setUp(): void
 	{
 		parent::setUp();
 	}

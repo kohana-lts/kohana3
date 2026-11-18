@@ -23,7 +23,7 @@ class Kohana_RouteTest extends Unittest_TestCase
 	 * Remove all caches
 	 */
 	// @codingStandardsIgnoreStart
-	public function setUp()
+	public function setUp(): void
 	// @codingStandardsIgnoreEnd
 	{
 		parent::setUp();
@@ -37,7 +37,7 @@ class Kohana_RouteTest extends Unittest_TestCase
 	 * Removes cache files created during tests
 	 */
 	// @codingStandardsIgnoreStart
-	public function tearDown()
+	public function tearDown(): void
 	// @codingStandardsIgnoreEnd
 	{
 		parent::tearDown();
@@ -53,10 +53,11 @@ class Kohana_RouteTest extends Unittest_TestCase
 	 *
 	 * @test
 	 * @covers Route::get
-	 * @expectedException Kohana_Exception
 	 */
 	public function test_get_throws_exception_if_route_dnx()
 	{
+		$this->expectException(*::class);
+
 		Route::get('HAHAHAHAHAHAHAHAHA');
 	}
 

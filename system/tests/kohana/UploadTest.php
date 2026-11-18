@@ -93,10 +93,11 @@ class Kohana_UploadTest extends Unittest_TestCase
 	 *
 	 * @test
 	 * @covers upload::size
-	 * @expectedException Kohana_Exception
 	 */
 	public function test_size_throws_exception_for_invalid_size()
 	{
+		$this->expectException(Kohana_Exception::class);
+
 		$this->setEnvironment(array(
 			'_FILES' => array(
 				'unit_test' => array(

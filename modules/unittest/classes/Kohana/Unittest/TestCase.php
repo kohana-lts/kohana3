@@ -2,10 +2,13 @@
 
 /**
  * A version of the stock PHPUnit testcase that includes some extra helpers
- * and default settings
+ * and default settings.
+ *
+ * The legacy assertion methods at the end of this class keep the upstream
+ * tests (written for PHPUnit 3.7/4) running on PHPUnit 9.
  */
-abstract class Kohana_Unittest_TestCase extends PHPUnit_Framework_TestCase {
-	
+abstract class Kohana_Unittest_TestCase extends \PHPUnit\Framework\TestCase {
+
 	/**
 	 * Make sure PHPUnit backs up globals
 	 * @var boolean
@@ -31,7 +34,7 @@ abstract class Kohana_Unittest_TestCase extends PHPUnit_Framework_TestCase {
 	 * Extending classes that have their own setUp() should call
 	 * parent::setUp()
 	 */
-	public function setUp()
+	public function setUp(): void
 	{
 		$this->_helpers = new Unittest_Helpers;
 
@@ -44,9 +47,12 @@ abstract class Kohana_Unittest_TestCase extends PHPUnit_Framework_TestCase {
 	 * Extending classes that have their own tearDown()
 	 * should call parent::tearDown()
 	 */
-	public function tearDown()
+	public function tearDown(): void
 	{
-		$this->_helpers->restore_environment();
+		if ($this->_helpers)
+		{
+			$this->_helpers->restore_environment();
+		}
 	}
 
 	/**
@@ -96,75 +102,279 @@ abstract class Kohana_Unittest_TestCase extends PHPUnit_Framework_TestCase {
 	}
 
 	/**
+	 * PHPUnit 3.7 style mock factory.
+	 *
+	 * @param string     $class
+	 * @param array|null $methods         methods to replace; NULL replaces none, array() replaces all
+	 * @param array      $arguments       constructor arguments
+	 * @param string     $mock_class_name
+	 * @param bool       $call_constructor
+	 * @return \PHPUnit\Framework\MockObject\MockObject
+	 */
+	public function getMock($class, $methods = array(), array $arguments = array(), $mock_class_name = '', $call_constructor = TRUE)
+	{
+		$builder = $this->getMockBuilder($class);
+
+		if ($methods !== array())
+		{
+			$builder->onlyMethods((array) $methods);
+		}
+
+		if ($arguments)
+		{
+			$builder->setConstructorArgs($arguments);
+		}
+
+		if ($mock_class_name !== '')
+		{
+			$builder->setMockClassName($mock_class_name);
+		}
+
+		if ( ! $call_constructor)
+		{
+			$builder->disableOriginalConstructor();
+		}
+
+		return $builder->getMock();
+	}
+
+	/**
+	 * PHPUnit 3.7 style expected exception.
+	 */
+	public function setExpectedException($exception, $message = NULL, $code = NULL)
+	{
+		$this->expectException($exception);
+
+		if ($message !== NULL AND $message !== '')
+		{
+			$this->expectExceptionMessage($message);
+		}
+
+		if ($code !== NULL)
+		{
+			$this->expectExceptionCode($code);
+		}
+	}
+
+	/**
+	 * Reads a property of an object or a static property of a class,
+	 * whatever its visibility.
+	 *
+	 * @param object|string $object
+	 * @param string        $name
+	 * @return mixed
+	 */
+	public static function readAttribute($object, $name)
+	{
+		$property = new ReflectionProperty($object, $name);
+		$property->setAccessible(TRUE);
+
+		return $property->isStatic() ? $property->getValue() : $property->getValue($object);
+	}
+
+	public static function assertAttributeSame($expected, $name, $object, $message = '')
+	{
+		static::assertSame($expected, static::readAttribute($object, $name), $message);
+	}
+
+	public static function assertAttributeNotSame($expected, $name, $object, $message = '')
+	{
+		static::assertNotSame($expected, static::readAttribute($object, $name), $message);
+	}
+
+	public static function assertAttributeEquals($expected, $name, $object, $message = '')
+	{
+		static::assertEquals($expected, static::readAttribute($object, $name), $message);
+	}
+
+	public static function assertAttributeContains($needle, $name, $object, $message = '')
+	{
+		static::assertContains($needle, static::readAttribute($object, $name), $message);
+	}
+
+	public static function assertAttributeNotContains($needle, $name, $object, $message = '')
+	{
+		static::assertNotContains($needle, static::readAttribute($object, $name), $message);
+	}
+
+	/**
+	 * PHPUnit 3.7 style type assertion.
+	 */
+	public static function assertInternalType($type, $actual, $message = '')
+	{
+		$map = array(
+			'array'    => 'is_array',
+			'bool'     => 'is_bool',
+			'boolean'  => 'is_bool',
+			'callable' => 'is_callable',
+			'float'    => 'is_float',
+			'double'   => 'is_float',
+			'int'      => 'is_int',
+			'integer'  => 'is_int',
+			'iterable' => 'is_iterable',
+			'null'     => 'is_null',
+			'numeric'  => 'is_numeric',
+			'object'   => 'is_object',
+			'resource' => 'is_resource',
+			'scalar'   => 'is_scalar',
+			'string'   => 'is_string',
+		);
+
+		static::assertArrayHasKey($type, $map, 'Unknown type '.$type);
+		static::assertTrue($map[$type]($actual), $message ?: 'Failed asserting that '.var_export($actual, TRUE).' is of type "'.$type.'".');
+	}
+
+	/**
+	 * Also accepts a string haystack, as PHPUnit 3.7 did.
+	 */
+	public static function assertContains($needle, $haystack, string $message = ''): void
+	{
+		if (is_string($haystack))
+		{
+			static::assertStringContainsString((string) $needle, $haystack, $message);
+		}
+		else
+		{
+			parent::assertContains($needle, $haystack, $message);
+		}
+	}
+
+	public static function assertRegExp($pattern, $string, $message = '')
+	{
+		static::assertMatchesRegularExpression($pattern, $string, $message);
+	}
+
+	/**
 	 * Evaluate an HTML or XML string and assert its structure and/or contents.
 	 *
-	 * NOTE:
-	 * Overriding this method to remove the deprecation error
-	 * when tested with PHPUnit 4.2.0+
-	 *
-	 * TODO:
-	 * this should be removed when phpunit-dom-assertions gets released
-	 * https://github.com/phpunit/phpunit-dom-assertions
-	 *
-	 * @param array $matcher
+	 * @param array  $matcher keys: tag, attributes, content, parent, child, ancestor, descendant
 	 * @param string $actual
 	 * @param string $message
-	 * @param bool $isHtml
-	 * @uses Unittest_TestCase::tag_match
+	 * @param bool   $isHtml
 	 */
-	public static function assertTag($matcher, $actual, $message = '', $isHtml = true)
+	public static function assertTag($matcher, $actual, $message = '', $isHtml = TRUE)
 	{
-		//trigger_error(__METHOD__ . ' is deprecated', E_USER_DEPRECATED);
-
-		$matched = static::tag_match($matcher, $actual, $message, $isHtml);
-		static::assertTrue($matched, $message);
+		static::assertTrue(static::tag_match($matcher, $actual, $isHtml), $message);
 	}
 
 	/**
 	 * This assertion is the exact opposite of assertTag
-	 *
-	 * Rather than asserting that $matcher results in a match, it asserts that
-	 * $matcher does not match
-	 *
-	 * NOTE:
-	 * Overriding this method to remove the deprecation error
-	 * when tested with PHPUnit 4.2.0+
-	 *
-	 * TODO:
-	 * this should be removed when phpunit-dom-assertions gets released
-	 * https://github.com/phpunit/phpunit-dom-assertions
-	 *
-	 * @param array $matcher
-	 * @param string $actual
-	 * @param string $message
-	 * @param bool $isHtml
-	 * @uses Unittest_TestCase::tag_match
 	 */
-	public static function assertNotTag($matcher, $actual, $message = '', $isHtml = true)
+	public static function assertNotTag($matcher, $actual, $message = '', $isHtml = TRUE)
 	{
-		//trigger_error(__METHOD__ . ' is deprecated', E_USER_DEPRECATED);
-
-		$matched = static::tag_match($matcher, $actual, $message, $isHtml);
-		static::assertFalse($matched, $message);
+		static::assertFalse(static::tag_match($matcher, $actual, $isHtml), $message);
 	}
 
 	/**
 	 * Helper function to match HTML string tags against certain criteria
 	 *
-	 * TODO:
-	 * this should be removed when phpunit-dom-assertions gets released
-	 * https://github.com/phpunit/phpunit-dom-assertions
-	 *
-	 * @param array $matcher
-	 * @param string $actual
-	 * @param string $message
-	 * @param bool $isHtml
 	 * @return bool TRUE if there is a match FALSE otherwise
 	 */
-	protected static function tag_match($matcher, $actual, $message = '', $isHtml = true)
+	protected static function tag_match($matcher, $actual, $isHtml = TRUE)
 	{
-		$dom = PHPUnit_Util_XML::load($actual, $isHtml);
-		$tags = PHPUnit_Util_XML::findNodes($dom, $matcher, $isHtml);
-		return count($tags) > 0 && $tags[0] instanceof DOMNode;
+		$dom = new DOMDocument;
+		$internal = libxml_use_internal_errors(TRUE);
+
+		if ($isHtml)
+		{
+			$dom->loadHTML('<?xml encoding="utf-8"?>'.$actual);
+		}
+		else
+		{
+			$dom->loadXML($actual);
+		}
+
+		libxml_clear_errors();
+		libxml_use_internal_errors($internal);
+
+		foreach ($dom->getElementsByTagName('*') as $node)
+		{
+			if (static::node_matches($node, $matcher))
+				return TRUE;
+		}
+
+		return FALSE;
+	}
+
+	/**
+	 * @param DOMElement $node
+	 * @param array      $matcher
+	 * @return bool
+	 */
+	protected static function node_matches(DOMElement $node, array $matcher)
+	{
+		if (isset($matcher['tag']) AND strtolower($node->tagName) !== strtolower($matcher['tag']))
+			return FALSE;
+
+		if (isset($matcher['attributes']))
+		{
+			foreach ($matcher['attributes'] as $name => $value)
+			{
+				if ( ! $node->hasAttribute($name) OR $node->getAttribute($name) !== (string) $value)
+					return FALSE;
+			}
+		}
+
+		if (isset($matcher['content']) AND $node->textContent !== (string) $matcher['content'])
+			return FALSE;
+
+		if (isset($matcher['parent']))
+		{
+			if ( ! $node->parentNode instanceof DOMElement OR ! static::node_matches($node->parentNode, $matcher['parent']))
+				return FALSE;
+		}
+
+		if (isset($matcher['ancestor']))
+		{
+			$found = FALSE;
+
+			for ($parent = $node->parentNode; $parent instanceof DOMElement; $parent = $parent->parentNode)
+			{
+				if (static::node_matches($parent, $matcher['ancestor']))
+				{
+					$found = TRUE;
+					break;
+				}
+			}
+
+			if ( ! $found)
+				return FALSE;
+		}
+
+		if (isset($matcher['child']))
+		{
+			$found = FALSE;
+
+			foreach ($node->childNodes as $child)
+			{
+				if ($child instanceof DOMElement AND static::node_matches($child, $matcher['child']))
+				{
+					$found = TRUE;
+					break;
+				}
+			}
+
+			if ( ! $found)
+				return FALSE;
+		}
+
+		if (isset($matcher['descendant']))
+		{
+			$found = FALSE;
+
+			foreach ($node->getElementsByTagName('*') as $child)
+			{
+				if (static::node_matches($child, $matcher['descendant']))
+				{
+					$found = TRUE;
+					break;
+				}
+			}
+
+			if ( ! $found)
+				return FALSE;
+		}
+
+		return TRUE;
 	}
 }

@@ -9,7 +9,7 @@
  * @copyright  (c) 2009-2012 Kohana Team
  * @license    http://kohanaphp.com/license
  */
-class Kohana_CacheTest extends PHPUnit_Framework_TestCase {
+class Kohana_CacheTest extends Unittest_TestCase {
 
 	const BAD_GROUP_DEFINITION  = 1010;
 	const EXPECT_SELF           = 1001;
@@ -86,10 +86,11 @@ class Kohana_CacheTest extends PHPUnit_Framework_TestCase {
 	 * Tests that `clone($cache)` will be prevented to maintain singleton
 	 *
 	 * @return  void
-	 * @expectedException Cache_Exception
 	 */
 	public function test_cloning_fails()
 	{
+		$this->expectException(Cache_Exception::class);
+
 		$cache = $this->getMockBuilder('Cache')
 			->disableOriginalConstructor()
 			->getMockForAbstractClass();
