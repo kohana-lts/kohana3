@@ -76,11 +76,16 @@ define('SYSPATH', realpath($system).DIRECTORY_SEPARATOR);
 // Clean up the configuration vars
 unset($application, $modules, $system);
 
-if (file_exists('install'.EXT))
+// The installation check shows server paths: never run it in production
+$kohana_env = isset($_SERVER['KOHANA_ENV']) ? $_SERVER['KOHANA_ENV'] : getenv('KOHANA_ENV');
+
+if (file_exists('install'.EXT) AND strtoupper((string) $kohana_env) !== 'PRODUCTION')
 {
 	// Load the installation check
 	return include 'install'.EXT;
 }
+
+unset($kohana_env);
 
 /**
  * Define the start time of the application, used for profiling.
