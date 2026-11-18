@@ -34,13 +34,13 @@ class Kohana_Request_ClientTest extends Unittest_TestCase
 		$route_class = new ReflectionClass('Route');
 		$routes_prop = $route_class->getProperty('_routes');
 
-		self::$_original_routes = $routes_prop->getValue('Route');
+		self::$_original_routes = $routes_prop->getValue();
 
 		$routes = array(
 			'ko_request_clienttest' => new Route('<controller>/<action>/<data>',array('data'=>'.+'))
 		) + self::$_original_routes;
 
-		$routes_prop->setValue('Route',$routes);
+		$routes_prop->setValue(NULL, $routes);
 
 	}
 
@@ -54,7 +54,7 @@ class Kohana_Request_ClientTest extends Unittest_TestCase
 		// Reset routes
 		$route_class = new ReflectionClass('Route');
 		$routes_prop = $route_class->getProperty('_routes');
-		$routes_prop->setValue('Route',self::$_original_routes);
+		$routes_prop->setValue(NULL, self::$_original_routes);
 
 		parent::tearDownAfterClass();
 	}

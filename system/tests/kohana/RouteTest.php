@@ -173,14 +173,9 @@ class Kohana_RouteTest extends Unittest_TestCase
 	 */
 	public function test_constructor_returns_if_uri_is_null()
 	{
-		// We use a mock object to make sure that the route wasn't recompiled
-		$route = $this->getMock('Route', array('_compile'), array(), '', FALSE);
-
-		$route
-			->expects($this->never())
-			->method('_compile');
-
-		$route->__construct(NULL,NULL);
+		// Route::compile() is static and cannot be mocked, so check that
+		// _route_regex stays NULL (the route was not compiled)
+		$route = new Route(NULL, NULL);
 
 		$this->assertAttributeSame('', '_uri', $route);
 		$this->assertAttributeSame(array(), '_regex', $route);

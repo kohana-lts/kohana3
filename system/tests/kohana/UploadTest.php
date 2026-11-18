@@ -116,7 +116,6 @@ class Kohana_UploadTest extends Unittest_TestCase
 	/**
 	 * Provides test data for test_vali()
 	 *
-	 * @test
 	 * @return array
 	 */
 	public function provider_valid()
