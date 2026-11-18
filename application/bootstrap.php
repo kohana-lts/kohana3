@@ -77,15 +77,19 @@ if (isset($_SERVER['SERVER_PROTOCOL']))
 }
 
 /**
- * Set Kohana::$environment if a 'KOHANA_ENV' environment variable has been supplied.
+ * Set Kohana::$environment if a 'KOHANA_ENV' server or environment variable has been supplied.
  *
  * Note: If you supply an invalid environment name, a PHP warning will be thrown
  * saying "Couldn't find constant Kohana::<INVALID_ENV_NAME>"
  */
-if (isset($_SERVER['KOHANA_ENV']))
+$kohana_env = isset($_SERVER['KOHANA_ENV']) ? $_SERVER['KOHANA_ENV'] : getenv('KOHANA_ENV');
+
+if ($kohana_env !== FALSE AND $kohana_env !== '')
 {
-	Kohana::$environment = constant('Kohana::'.strtoupper($_SERVER['KOHANA_ENV']));
+	Kohana::$environment = constant('Kohana::'.strtoupper($kohana_env));
 }
+
+unset($kohana_env);
 
 /**
  * Initialize Kohana, setting the default options.
