@@ -805,6 +805,18 @@ class Kohana_RequestTest extends Unittest_TestCase
 		$this->assertEquals(strlen($request->body()), $headers['content-length']);
 	}
 
+	/**
+	 * A request without a body has a content length of 0.
+	 *
+	 * @covers Request::content_length
+	 */
+	public function test_content_length_without_body()
+	{
+		$request = new Request('http://example.com/');
+
+		$this->assertSame(0, $request->content_length());
+	}
+
 } // End Kohana_RequestTest
 
 /**

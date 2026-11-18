@@ -1203,7 +1203,7 @@ class Kohana_Request implements HTTP_Request {
 	 */
 	public function content_length()
 	{
-		return strlen($this->body());
+		return strlen((string) $this->body());
 	}
 
 	/**
