@@ -20,6 +20,25 @@ class Model_Auth_User_Token extends ORM {
 	);
 
 	/**
+	 * @var string token for the cookie, set by create() and rotate() only.
+	 *             The "token" column keeps [Model_Auth_User_Token::hash_token].
+	 */
+	protected $_plain_token;
+
+	/**
+	 * Returns the value that the "token" column keeps for a cookie token,
+	 * so a database leak does not give valid cookies. 40 characters fit
+	 * the column of the auth schema.
+	 *
+	 * @param   string  $token  token from the cookie
+	 * @return  string
+	 */
+	public static function hash_token($token)
+	{
+		return substr(hash('sha256', (string) $token), 0, 40);
+	}
+
+	/**
 	 * Handles garbage collection and deleting of expired objects.
 	 *
 	 * @return  void
@@ -58,18 +77,48 @@ class Model_Auth_User_Token extends ORM {
 
 	public function create(?Validation $validation = NULL)
 	{
-		$this->token = $this->create_token();
+		$this->_set_new_token();
 
 		return parent::create($validation);
 	}
 
+	/**
+	 * Replaces the token with a new one and saves it. The old cookie value
+	 * stops working.
+	 *
+	 * @return  $this
+	 */
+	public function rotate()
+	{
+		$this->_set_new_token();
+
+		return $this->update();
+	}
+
+	/**
+	 * @return  string  token for the cookie, or NULL when the model did not create it
+	 */
+	public function plain_token()
+	{
+		return $this->_plain_token;
+	}
+
+	protected function _set_new_token()
+	{
+		$this->_plain_token = $this->create_token();
+		$this->token = static::hash_token($this->_plain_token);
+	}
+
+	/**
+	 * @return  string  new random token for the cookie
+	 */
 	protected function create_token()
 	{
 		do
 		{
-			$token = sha1(uniqid(Text::random('alnum', 32), TRUE));
+			$token = bin2hex(random_bytes(20));
 		}
-		while (ORM::factory('User_Token', array('token' => $token))->loaded());
+		while (ORM::factory('User_Token', array('token' => static::hash_token($token)))->loaded());
 
 		return $token;
 	}

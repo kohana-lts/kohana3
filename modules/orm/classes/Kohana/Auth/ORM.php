@@ -102,7 +102,7 @@ class Kohana_Auth_ORM extends Auth {
 				$data = array(
 					'user_id'    => $user->pk(),
 					'expires'    => time() + $this->_config['lifetime'],
-					'user_agent' => sha1(Request::$user_agent),
+					'user_agent' => sha1((string) Request::$user_agent),
 				);
 
 				// Create a new autologin token
@@ -111,7 +111,7 @@ class Kohana_Auth_ORM extends Auth {
 							->create();
 
 				// Set the autologin cookie
-				Cookie::set('authautologin', $token->token, $this->_config['lifetime']);
+				$this->_set_autologin_cookie($token->plain_token(), $this->_config['lifetime']);
 			}
 
 			// Finish the login
@@ -159,20 +159,19 @@ class Kohana_Auth_ORM extends Auth {
 	 */
 	public function auto_login()
 	{
-		if ($token = Cookie::get('authautologin'))
+		if ($token = $this->_get_autologin_cookie())
 		{
 			// Load the token and user
-			$token = ORM::factory('User_Token', array('token' => $token));
+			$token = ORM::factory('User_Token', array('token' => Model_User_Token::hash_token($token)));
 
 			if ($token->loaded() AND $token->user->loaded())
 			{
-				if ($token->user_agent === sha1(Request::$user_agent))
+				if (hash_equals((string) $token->user_agent, sha1((string) Request::$user_agent)))
 				{
-					// Save the token to create a new unique token
-					$token->save();
+					// A token works once, so a copied cookie fails after the next use
+					$token->rotate();
 
-					// Set the new token
-					Cookie::set('authautologin', $token->token, $token->expires - time());
+					$this->_set_autologin_cookie($token->plain_token(), $token->expires - time());
 
 					// Complete the login with the found data
 					$this->complete_login($token->user);
@@ -222,13 +221,13 @@ class Kohana_Auth_ORM extends Auth {
 		// Set by force_login()
 		$this->_session->delete('auth_forced');
 
-		if ($token = Cookie::get('authautologin'))
+		if ($token = $this->_get_autologin_cookie())
 		{
 			// Delete the autologin cookie to prevent re-login
-			Cookie::delete('authautologin');
+			$this->_delete_autologin_cookie();
 
 			// Clear the autologin token from the database
-			$token = ORM::factory('User_Token', array('token' => $token));
+			$token = ORM::factory('User_Token', array('token' => Model_User_Token::hash_token($token)));
 
 			if ($token->loaded() AND $logout_all)
 			{
@@ -247,6 +246,32 @@ class Kohana_Auth_ORM extends Auth {
 		}
 
 		return parent::logout($destroy);
+	}
+
+	/**
+	 * @return  string  autologin token from the cookie, or NULL
+	 */
+	protected function _get_autologin_cookie()
+	{
+		return Cookie::get('authautologin');
+	}
+
+	/**
+	 * @param   string   $token     autologin token
+	 * @param   integer  $lifetime  cookie lifetime in seconds
+	 * @return  void
+	 */
+	protected function _set_autologin_cookie($token, $lifetime)
+	{
+		Cookie::set('authautologin', $token, $lifetime);
+	}
+
+	/**
+	 * @return  void
+	 */
+	protected function _delete_autologin_cookie()
+	{
+		Cookie::delete('authautologin');
 	}
 
 	/**

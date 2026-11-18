@@ -32,7 +32,7 @@ CREATE TABLE user_tokens
   id serial,
   user_id integer NOT NULL,
   user_agent varchar(40) NOT NULL,
-  token character varying(32) NOT NULL,
+  token character varying(40) NOT NULL,
   created integer NOT NULL,
   expires integer NOT NULL,
   CONSTRAINT user_tokens_id_pkey PRIMARY KEY (id),

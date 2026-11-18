@@ -227,6 +227,92 @@ class Kohana_ORM_AuthORMTest extends Unittest_TestCase {
 		$this->assertSame($legacy, $this->stored_password($user));
 	}
 
+	/**
+	 * @return array token rows
+	 */
+	protected function tokens()
+	{
+		return DB::select()->from('user_tokens')->order_by('id')->execute(static::$db)->as_array();
+	}
+
+	/**
+	 * Logs in with "remember me", then clears the session.
+	 *
+	 * @return string autologin cookie value
+	 */
+	protected function remembered_login($username)
+	{
+		$this->insert_user($username, password_hash($username.'-password', PASSWORD_DEFAULT));
+
+		$this->assertTrue($this->auth->login($username, $username.'-password', TRUE));
+
+		Session::instance('ktmemory')->delete('auth_user');
+
+		return $this->auth->cookies['authautologin'];
+	}
+
+	public function test_remember_stores_a_hash_of_the_random_token()
+	{
+		$cookie = $this->remembered_login('hank');
+
+		$this->assertMatchesRegularExpression('/^[0-9a-f]{40}$/D', $cookie);
+
+		$tokens = $this->tokens();
+		$this->assertCount(1, $tokens);
+		$this->assertNotSame($cookie, $tokens[0]['token']);
+		$this->assertSame(Model_User_Token::hash_token($cookie), $tokens[0]['token']);
+		$this->assertSame(sha1('kt-agent'), $tokens[0]['user_agent']);
+	}
+
+	public function test_auto_login_rotates_the_token()
+	{
+		$old = $this->remembered_login('ivan');
+		$old_row = $this->tokens()[0];
+
+		$user = $this->auth->auto_login();
+
+		$this->assertInstanceOf('Model_User', $user);
+		$this->assertSame('ivan', $user->username);
+		$this->assertSame('ivan', $this->auth->get_user()->username);
+
+		$new = $this->auth->cookies['authautologin'];
+		$this->assertMatchesRegularExpression('/^[0-9a-f]{40}$/D', $new);
+		$this->assertNotSame($old, $new);
+
+		$tokens = $this->tokens();
+		$this->assertCount(1, $tokens);
+		$this->assertSame(Model_User_Token::hash_token($new), $tokens[0]['token']);
+		$this->assertEquals($old_row['expires'], $tokens[0]['expires']);
+
+		// The old cookie value does not log in any more
+		Session::instance('ktmemory')->delete('auth_user');
+		$this->auth->cookies['authautologin'] = $old;
+		$this->assertFalse($this->auth->auto_login());
+
+		$this->auth->cookies['authautologin'] = $new;
+		$this->assertInstanceOf('Model_User', $this->auth->auto_login());
+	}
+
+	public function test_auto_login_with_other_user_agent_deletes_the_token()
+	{
+		$this->remembered_login('jane');
+
+		Request::$user_agent = 'other-agent';
+
+		$this->assertFalse($this->auth->auto_login());
+		$this->assertCount(0, $this->tokens());
+	}
+
+	public function test_logout_deletes_the_token()
+	{
+		$this->remembered_login('kate');
+		$this->auth->auto_login();
+
+		$this->assertTrue($this->auth->logout());
+		$this->assertCount(0, $this->tokens());
+		$this->assertNull($this->auth->cookies['authautologin']);
+	}
+
 	protected function stored_password($user)
 	{
 		return DB::select('password')->from('users')->where('id', '=', $user->pk())->execute(static::$db)->get('password');
@@ -313,6 +399,21 @@ class Auth_Ktorm extends Auth_ORM {
 	public static function uninstall()
 	{
 		Auth::$_instance = NULL;
+	}
+
+	protected function _get_autologin_cookie()
+	{
+		return isset($this->cookies['authautologin']) ? $this->cookies['authautologin'] : NULL;
+	}
+
+	protected function _set_autologin_cookie($token, $lifetime)
+	{
+		$this->cookies['authautologin'] = $token;
+	}
+
+	protected function _delete_autologin_cookie()
+	{
+		$this->cookies['authautologin'] = NULL;
 	}
 }
 
