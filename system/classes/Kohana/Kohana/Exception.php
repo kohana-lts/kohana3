@@ -19,7 +19,7 @@ class Kohana_Kohana_Exception extends Exception {
 		E_PARSE              => 'Parse Error',
 		E_WARNING            => 'Warning',
 		E_USER_WARNING       => 'User Warning',
-		E_STRICT             => 'Strict',
+		2048                 => 'Strict', // E_STRICT, deprecated in PHP 8.4
 		E_NOTICE             => 'Notice',
 		E_RECOVERABLE_ERROR  => 'Recoverable Error',
 		E_DEPRECATED         => 'Deprecated',

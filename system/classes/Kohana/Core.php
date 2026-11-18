@@ -321,8 +321,8 @@ class Kohana_Core {
 			Kohana::$index_file = trim($settings['index_file'], '/');
 		}
 
-		// Determine if the extremely evil magic quotes are enabled
-		Kohana::$magic_quotes = (bool) get_magic_quotes_gpc();
+		// PHP 5.4 removed magic quotes
+		Kohana::$magic_quotes = FALSE;
 
 		// Sanitize all request variables
 		$_GET    = Kohana::sanitize($_GET);
