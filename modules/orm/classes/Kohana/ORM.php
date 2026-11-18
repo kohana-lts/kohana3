@@ -603,7 +603,8 @@ class Kohana_ORM extends Model implements serializable {
 	 */
 	public function unserialize($data)
 	{
-		$this->__unserialize(unserialize($data));
+		// Session_Cookie data can reach this, so create no objects
+		$this->__unserialize(unserialize($data, array('allowed_classes' => FALSE)));
 	}
 
 	/**

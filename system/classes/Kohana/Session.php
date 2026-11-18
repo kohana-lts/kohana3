@@ -76,6 +76,13 @@ abstract class Kohana_Session {
 	protected $_encrypted = FALSE;
 
 	/**
+	 * @var  mixed  classes that unserialize() may create from session data:
+	 *              TRUE for all, FALSE for none, or an array of class names.
+	 *              Other objects become __PHP_Incomplete_Class.
+	 */
+	protected $_allowed_classes = TRUE;
+
+	/**
 	 * @var  array  session data
 	 */
 	protected $_data = array();
@@ -119,6 +126,11 @@ abstract class Kohana_Session {
 
 			// Enable or disable encryption of data
 			$this->_encrypted = $config['encrypted'];
+		}
+
+		if (isset($config['allowed_classes']))
+		{
+			$this->_allowed_classes = $config['allowed_classes'];
 		}
 
 		// Load the session
@@ -441,7 +453,7 @@ abstract class Kohana_Session {
 	 */
 	protected function _unserialize($data)
 	{
-		return unserialize($data);
+		return unserialize($data, array('allowed_classes' => $this->_allowed_classes));
 	}
 
 	/**

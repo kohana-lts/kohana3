@@ -168,6 +168,20 @@ class Kohana_ORM_SQLiteTest extends Unittest_TestCase {
 		$this->assertSame('parent', ORM::factory('Kt_Note', 1)->item->name);
 	}
 
+	/**
+	 * The legacy Serializable path must not create objects from the data.
+	 */
+	public function test_legacy_unserialize_does_not_create_objects()
+	{
+		$item = ORM::factory('Kt_Static_Item');
+		$item->unserialize(serialize(array(
+			'_object' => array('id' => 1, 'name' => new ArrayObject(), 'score' => 0),
+			'_loaded' => TRUE,
+		)));
+
+		$this->assertInstanceOf('__PHP_Incomplete_Class', $item->name);
+	}
+
 	public function test_serialize_round_trip()
 	{
 		$item = ORM::factory('Kt_Item')->values(array('name' => 'cached', 'score' => 2), array('name', 'score'))->save();
@@ -206,6 +220,12 @@ class Model_Kt_Open_Item extends Model_Kt_Item {
 
 	protected $_object_name = 'kt_open_item';
 	protected $_values_without_expected = TRUE;
+}
+
+class Model_Kt_Static_Item extends Model_Kt_Item {
+
+	protected $_object_name = 'kt_static_item';
+	protected $_reload_on_wakeup = FALSE;
 }
 
 class Model_Kt_Note extends ORM {

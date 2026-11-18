@@ -228,6 +228,44 @@ class Kohana_ORM_AuthORMTest extends Unittest_TestCase {
 	}
 
 	/**
+	 * Session_Cookie allows only Model_User objects by default. The user
+	 * from a cookie session must still work.
+	 */
+	public function test_logged_in_user_survives_cookie_session()
+	{
+		$this->insert_user('lena', password_hash('lena-password', PASSWORD_DEFAULT));
+		$this->assertTrue($this->auth->login('lena', 'lena-password'));
+
+		$data = Session::instance('ktmemory')->as_array();
+		$data['last_active'] = time();
+		$raw = base64_encode(serialize($data));
+
+		$session = new class(array(), $raw) extends Session_Cookie {
+
+			private $raw;
+
+			public function __construct($config, $raw)
+			{
+				$this->raw = $raw;
+
+				parent::__construct($config);
+			}
+
+			protected function _read($id = NULL)
+			{
+				return $this->raw;
+			}
+		};
+
+		$user = $session->get('auth_user');
+
+		$this->assertInstanceOf('Model_User', $user);
+		$this->assertTrue($user->loaded());
+		$this->assertSame('lena', $user->username);
+		$this->assertEquals(1, $user->logins);
+	}
+
+	/**
 	 * @return array token rows
 	 */
 	protected function tokens()
