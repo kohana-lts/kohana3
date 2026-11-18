@@ -117,7 +117,18 @@ abstract class Kohana_Unittest_TestCase extends \PHPUnit\Framework\TestCase {
 
 		if ($methods !== array())
 		{
-			$builder->onlyMethods((array) $methods);
+			$methods  = (array) $methods;
+			$existing = array_filter($methods, function ($method) use ($class) {
+				return method_exists($class, $method);
+			});
+
+			$builder->onlyMethods(array_values($existing));
+
+			if ($missing = array_diff($methods, $existing))
+			{
+				// Methods that only exist through __call()
+				$builder->addMethods(array_values($missing));
+			}
 		}
 
 		if ($arguments)
@@ -167,7 +178,6 @@ abstract class Kohana_Unittest_TestCase extends \PHPUnit\Framework\TestCase {
 	public static function readAttribute($object, $name)
 	{
 		$property = new ReflectionProperty($object, $name);
-		$property->setAccessible(TRUE);
 
 		return $property->isStatic() ? $property->getValue() : $property->getValue($object);
 	}
@@ -236,6 +246,21 @@ abstract class Kohana_Unittest_TestCase extends \PHPUnit\Framework\TestCase {
 		else
 		{
 			parent::assertContains($needle, $haystack, $message);
+		}
+	}
+
+	/**
+	 * Also accepts a string haystack, as PHPUnit 3.7 did.
+	 */
+	public static function assertNotContains($needle, $haystack, string $message = ''): void
+	{
+		if (is_string($haystack))
+		{
+			static::assertStringNotContainsString((string) $needle, $haystack, $message);
+		}
+		else
+		{
+			parent::assertNotContains($needle, $haystack, $message);
 		}
 	}
 

@@ -681,7 +681,6 @@ class Kohana_EncryptTest extends Unittest_TestCase
 	{
 		$refl = new ReflectionClass($object);
 		$property = $refl->getProperty($name);
-		$property->setAccessible(TRUE);
 		$this->assertSame($expect, $property->getValue($object));
 	}
 

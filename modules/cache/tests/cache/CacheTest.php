@@ -235,7 +235,6 @@ class Kohana_CacheTest extends Unittest_TestCase {
 
 		$cache_reflection = new ReflectionClass($cache);
 		$sanitize_id = $cache_reflection->getMethod('_sanitize_id');
-		$sanitize_id->setAccessible(TRUE);
 
 		$this->assertSame($expected, $sanitize_id->invoke($cache, $id));
 	}
